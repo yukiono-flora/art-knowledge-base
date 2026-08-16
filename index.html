@@ -250,16 +250,29 @@ let activeField = "すべて";
 let query = "";
 let DATA = [];
 
-async function loadData() {
+// GAS Web AppはCORSに対応していないため、<script>タグを使うJSONP方式でデータを取得する
+function loadData() {
   document.getElementById("loadingState").style.display = "block";
   document.getElementById("errorState").style.display = "none";
   document.getElementById("cardGrid").innerHTML = "";
   document.getElementById("emptyState").style.display = "none";
 
-  try {
-    const res = await fetch(API_URL);
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    const json = await res.json();
+  const callbackName = "artKbCallback_" + Date.now();
+  let settled = false;
+
+  const timeoutId = setTimeout(() => {
+    if (!settled) {
+      settled = true;
+      handleLoadError(new Error("タイムアウト"));
+    }
+  }, 15000);
+
+  window[callbackName] = function (json) {
+    if (settled) return;
+    settled = true;
+    clearTimeout(timeoutId);
+    delete window[callbackName];
+    script.remove();
 
     DATA = (json.items || []).map(item => ({
       title: item["タイトル"],
@@ -275,11 +288,25 @@ async function loadData() {
 
     document.getElementById("loadingState").style.display = "none";
     render();
-  } catch (err) {
-    document.getElementById("loadingState").style.display = "none";
-    document.getElementById("errorState").style.display = "block";
-    console.error("データ取得エラー:", err);
-  }
+  };
+
+  const script = document.createElement("script");
+  script.src = API_URL + "?callback=" + callbackName;
+  script.onerror = () => {
+    if (!settled) {
+      settled = true;
+      clearTimeout(timeoutId);
+      delete window[callbackName];
+      handleLoadError(new Error("スクリプト読み込み失敗"));
+    }
+  };
+  document.body.appendChild(script);
+}
+
+function handleLoadError(err) {
+  document.getElementById("loadingState").style.display = "none";
+  document.getElementById("errorState").style.display = "block";
+  console.error("データ取得エラー:", err);
 }
 
 document.getElementById("retryBtn").addEventListener("click", loadData);
