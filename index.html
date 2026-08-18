@@ -21,8 +21,11 @@
   body {
     margin: 0;
     background: var(--bg);
-    font-family: "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
-    color: var(--gray-body);
+    font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic UI", "Noto Sans JP", sans-serif;
+    color: #33393F;
+    font-size: 15.5px;
+    line-height: 1.8;
+    -webkit-font-smoothing: antialiased;
   }
 
   /* Header */
@@ -116,16 +119,12 @@
   .card {
     background: var(--white);
     border: 1px solid var(--gray-line);
-    border-left: 4px solid var(--gray-line);
     border-radius: 10px;
     padding: 18px 20px;
     display: flex;
     flex-direction: column;
     gap: 10px;
   }
-  .card.high { border-left-color: var(--red); }
-  .card.mid { border-left-color: var(--amber); }
-  .card.low { border-left-color: var(--gray-line); }
 
   .card-top {
     display: flex;
@@ -142,14 +141,6 @@
     border-radius: 5px;
     white-space: nowrap;
   }
-  .importance {
-    font-size: 11px;
-    font-weight: 600;
-    white-space: nowrap;
-  }
-  .importance.high { color: var(--red); }
-  .importance.mid { color: var(--amber); }
-  .importance.low { color: #9AA3AB; }
 
   .card-title {
     font-size: 15px;
@@ -186,6 +177,7 @@
   .card-actions {
     display: flex;
     justify-content: flex-end;
+    gap: 8px;
   }
   .interest-btn {
     display: flex;
@@ -209,6 +201,81 @@
     border-color: var(--blue);
     color: var(--blue);
     font-weight: 600;
+  }
+  .not-interest-btn.active {
+    background: #F1E4E4;
+    border-color: var(--red);
+    color: var(--red);
+    font-weight: 600;
+  }
+  .memo-section {
+    border-top: 1px solid var(--gray-line);
+    padding-top: 12px;
+    margin-top: 2px;
+  }
+  .memo-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-body);
+    margin-bottom: 8px;
+    cursor: pointer;
+  }
+  .memo-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .memo-item {
+    background: var(--bg);
+    border-radius: 6px;
+    padding: 7px 10px;
+  }
+  .memo-item-top {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2px;
+  }
+  .memo-author {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--navy);
+  }
+  .memo-date {
+    font-size: 11px;
+    color: #9AA3AB;
+  }
+  .memo-content {
+    font-size: 12.5px;
+    color: var(--gray-body);
+    line-height: 1.6;
+  }
+  .memo-input-row {
+    display: flex;
+    gap: 6px;
+  }
+  .memo-input {
+    flex: 1;
+    padding: 7px 10px;
+    border: 1px solid var(--gray-line);
+    border-radius: 6px;
+    font-size: 12.5px;
+  }
+  .memo-submit-btn {
+    padding: 7px 12px;
+    border: 1px solid var(--blue);
+    background: var(--blue);
+    color: var(--white);
+    border-radius: 6px;
+    font-size: 12.5px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .memo-submit-btn:hover {
+    background: var(--blue-dark);
   }
 
   .empty-state {
@@ -276,6 +343,7 @@ const FIELDS = ["すべて", "ART/生殖医療テクノロジー動向", "規制
 let activeField = "すべて";
 let query = "";
 let DATA = [];
+let MEMOS = {}; // { "記事ID": [{author, content, date}, ...] }
 
 // GAS Web AppはCORSに対応していないため、<script>タグを使うJSONP方式でデータを取得する
 function loadData() {
@@ -313,6 +381,11 @@ function loadData() {
       date: item["公開日"],
       url: item["元URL"]
     }));
+
+    // 新着順(日付が新しい順)に並び替え
+    DATA.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    MEMOS = json.memos || {};
 
     document.getElementById("loadingState").style.display = "none";
     render();
@@ -374,10 +447,9 @@ function render() {
   empty.style.display = "none";
 
   grid.innerHTML = filtered.map(item => `
-    <div class="card ${item.importance}">
+    <div class="card">
       <div class="card-top">
         <span class="field-tag">${item.field}</span>
-        <span class="importance ${item.importance}">重要度: ${item.importanceLabel}</span>
       </div>
       <div class="card-title"><a href="${item.url}" target="_blank" rel="noopener">${item.title}</a></div>
       <div class="card-summary">${item.summary}</div>
@@ -386,9 +458,32 @@ function render() {
         <span>${item.date}</span>
       </div>
       <div class="card-actions">
-        <button class="interest-btn ${interestedIds.has(String(item.id)) ? "active" : ""}" data-id="${item.id}" data-title="${escapeAttr(item.title)}" data-field="${escapeAttr(item.field)}">
+        <button class="interest-btn ${feedbackState[item.id] === "interested" ? "active" : ""}"
+          data-id="${item.id}" data-title="${escapeAttr(item.title)}" data-field="${escapeAttr(item.field)}" data-type="interested">
           👍 興味あり
         </button>
+        <button class="interest-btn not-interest-btn ${feedbackState[item.id] === "not_interested" ? "active" : ""}"
+          data-id="${item.id}" data-title="${escapeAttr(item.title)}" data-field="${escapeAttr(item.field)}" data-type="not_interested">
+          👎 興味なし
+        </button>
+      </div>
+      <div class="memo-section">
+        <div class="memo-header">💬 メモ ${(MEMOS[item.id] || []).length}件</div>
+        <div class="memo-list">
+          ${(MEMOS[item.id] || []).map(m => `
+            <div class="memo-item">
+              <div class="memo-item-top">
+                <span class="memo-author">${escapeAttr(m.author)}</span>
+                <span class="memo-date">${escapeAttr(m.date)}</span>
+              </div>
+              <div class="memo-content">${escapeAttr(m.content)}</div>
+            </div>
+          `).join("")}
+        </div>
+        <div class="memo-input-row">
+          <input type="text" class="memo-input" placeholder="気づいたことをメモ..." data-id="${item.id}">
+          <button class="memo-submit-btn" data-id="${item.id}">投稿</button>
+        </div>
       </div>
     </div>
   `).join("");
@@ -396,31 +491,80 @@ function render() {
   grid.querySelectorAll(".interest-btn").forEach(btn => {
     btn.addEventListener("click", () => onInterestClick(btn));
   });
+  grid.querySelectorAll(".memo-submit-btn").forEach(btn => {
+    btn.addEventListener("click", () => onMemoSubmit(btn));
+  });
+  grid.querySelectorAll(".memo-input").forEach(input => {
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        const btn = grid.querySelector(`.memo-submit-btn[data-id="${input.dataset.id}"]`);
+        onMemoSubmit(btn);
+      }
+    });
+  });
+}
+
+function onMemoSubmit(btn) {
+  const id = btn.dataset.id;
+  const input = document.querySelector(`.memo-input[data-id="${id}"]`);
+  const content = input.value.trim();
+  if (!content) return;
+
+  let author = localStorage.getItem("artKbAuthorName");
+  if (!author) {
+    author = prompt("お名前を入力してください(次回から自動入力されます)");
+    if (!author) return;
+    localStorage.setItem("artKbAuthorName", author);
+  }
+
+  if (!MEMOS[id]) MEMOS[id] = [];
+  MEMOS[id].push({ author, content, date: "たった今" });
+  input.value = "";
+  render();
+
+  fetch(API_URL, {
+    method: "POST",
+    mode: "no-cors",
+    credentials: "include",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({ action: "addMemo", id: id, author: author, content: content })
+  }).catch(err => console.error("メモ送信エラー:", err));
 }
 
 function escapeAttr(str) {
   return String(str || "").replace(/"/g, "&quot;");
 }
 
-const interestedIds = new Set(JSON.parse(localStorage.getItem("artKbInterested") || "[]"));
+// { "記事ID": "interested" | "not_interested" } の形でブラウザに保存
+let feedbackState = JSON.parse(localStorage.getItem("artKbFeedback") || "{}");
 
 function onInterestClick(btn) {
   const id = btn.dataset.id;
-  if (interestedIds.has(id)) return; // 二重送信防止
+  const type = btn.dataset.type; // "interested" or "not_interested"
+  const current = feedbackState[id];
 
-  interestedIds.add(id);
-  localStorage.setItem("artKbInterested", JSON.stringify([...interestedIds]));
-  btn.classList.add("active");
+  // 同じボタンをもう一度押したら「取り消し(未評価に戻す)」
+  const newState = current === type ? null : type;
+
+  if (newState) {
+    feedbackState[id] = newState;
+  } else {
+    delete feedbackState[id];
+  }
+  localStorage.setItem("artKbFeedback", JSON.stringify(feedbackState));
+  render(); // ボタンの見た目を更新
 
   fetch(API_URL, {
     method: "POST",
     mode: "no-cors",
+    credentials: "include",
     headers: { "Content-Type": "text/plain;charset=utf-8" },
     body: JSON.stringify({
       action: "feedback",
       id: id,
       title: btn.dataset.title,
-      field: btn.dataset.field
+      field: btn.dataset.field,
+      type: newState || "cancel" // 取り消した場合は "cancel" として記録
     })
   }).catch(err => console.error("フィードバック送信エラー:", err));
 }
