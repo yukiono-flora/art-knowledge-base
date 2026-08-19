@@ -61,7 +61,7 @@
   /* Toolbar */
   .toolbar {
     padding: 20px 32px 0;
-    max-width: 1120px;
+    max-width: 1600px;
     margin: 0 auto;
   }
   .search-row {
@@ -82,6 +82,56 @@
     outline: none;
     border-color: var(--blue);
     box-shadow: 0 0 0 3px var(--blue-soft);
+  }
+  .add-news-btn {
+    padding: 0 20px;
+    border: none;
+    background: var(--blue);
+    color: var(--white);
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .add-news-btn:hover { background: var(--blue-dark); }
+  .add-news-form {
+    background: var(--white);
+    border: 1px solid var(--gray-line);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .form-row {
+    display: flex;
+    gap: 8px;
+  }
+  .form-row input, .form-row select, .add-news-form textarea {
+    flex: 1;
+    padding: 9px 12px;
+    border: 1px solid var(--gray-line);
+    border-radius: 7px;
+    font-size: 13.5px;
+    font-family: inherit;
+  }
+  .add-news-submit-btn {
+    padding: 9px 20px;
+    border: none;
+    background: var(--navy);
+    color: var(--white);
+    border-radius: 7px;
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .form-note {
+    font-size: 12px;
+    color: var(--blue);
+    min-height: 16px;
   }
   .chip-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
   .chip {
@@ -109,11 +159,11 @@
 
   /* Cards */
   .grid {
-    max-width: 1120px;
+    max-width: 1600px;
     margin: 0 auto;
     padding: 0 32px 60px;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
     gap: 16px;
   }
   .card {
@@ -140,6 +190,20 @@
     padding: 3px 9px;
     border-radius: 5px;
     white-space: nowrap;
+  }
+  .new-badge {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--white);
+    background: var(--red);
+    padding: 3px 9px;
+    border-radius: 5px;
+    white-space: nowrap;
+  }
+  .card-top-right {
+    display: flex;
+    gap: 6px;
+    align-items: center;
   }
 
   .card-title {
@@ -255,7 +319,20 @@
   }
   .memo-input-row {
     display: flex;
+    flex-direction: column;
     gap: 6px;
+  }
+  .memo-input-top-row {
+    display: flex;
+    gap: 6px;
+  }
+  .memo-name-input {
+    width: 110px;
+    flex-shrink: 0;
+    padding: 7px 8px;
+    border: 1px solid var(--gray-line);
+    border-radius: 6px;
+    font-size: 12.5px;
   }
   .memo-input {
     flex: 1;
@@ -265,7 +342,8 @@
     font-size: 12.5px;
   }
   .memo-submit-btn {
-    padding: 7px 12px;
+    align-self: flex-end;
+    padding: 7px 16px;
     border: 1px solid var(--blue);
     background: var(--blue);
     color: var(--white);
@@ -320,8 +398,40 @@
 <div class="toolbar">
   <div class="search-row">
     <input class="search-input" id="searchInput" type="text" placeholder="キーワードで検索(タイトル・要約)">
+    <button class="add-news-btn" id="addNewsBtn">+ ニュースを追加</button>
+  </div>
+  <div class="add-news-form" id="addNewsForm" style="display:none;">
+    <div class="form-row">
+      <input type="text" id="formTitle" placeholder="タイトル(必須)">
+      <input type="text" id="formUrl" placeholder="URL">
+    </div>
+    <div class="form-row">
+      <select id="formField">
+        <option value="">分野を選択</option>
+        <option>ART/生殖医療テクノロジー動向</option>
+        <option>規制・政策動向</option>
+        <option>学術研究</option>
+        <option>業界動向・統計</option>
+      </select>
+      <input type="text" id="formCountry" placeholder="国(例: 日本, アメリカ)">
+      <select id="formImportance">
+        <option value="中">重要度: 中</option>
+        <option value="高">重要度: 高</option>
+        <option value="低">重要度: 低</option>
+      </select>
+    </div>
+    <textarea id="formSummary" placeholder="要約・コメント" rows="2"></textarea>
+    <div class="form-row">
+      <input type="text" id="formAuthor" placeholder="お名前(任意)">
+      <button class="add-news-submit-btn" id="addNewsSubmitBtn">登録する</button>
+    </div>
+    <div class="form-note" id="formNote"></div>
   </div>
   <div class="chip-row" id="fieldChips"></div>
+  <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+    <span style="font-size:12px; color:#8A95A0; flex-shrink:0;">国:</span>
+    <div class="chip-row" id="regionChips" style="margin-bottom:0;"></div>
+  </div>
   <div class="count-line" id="countLine"></div>
 </div>
 
@@ -340,8 +450,16 @@ const API_URL = "https://script.google.com/a/macros/arcs-inc.jp/s/AKfycbydHNsQDT
 const IMPORTANCE_MAP = { "高": "high", "中": "mid", "低": "low" };
 
 const FIELDS = ["すべて", "ART/生殖医療テクノロジー動向", "規制・政策動向", "学術研究", "業界動向・統計"];
+let REGIONS = ["すべて"];
 let activeField = "すべて";
+let activeRegion = "すべて";
 let query = "";
+
+function updateRegionsFromData() {
+  const uniqueRegions = [...new Set(DATA.map(item => item.region).filter(Boolean))];
+  uniqueRegions.sort((a, b) => a.localeCompare(b, "ja")); // あいうえお順
+  REGIONS = ["すべて", ...uniqueRegions];
+}
 let DATA = [];
 let MEMOS = {}; // { "記事ID": [{author, content, date}, ...] }
 
@@ -379,13 +497,17 @@ function loadData() {
       source: item["ソース種別"],
       poster: item["投稿者"],
       date: item["公開日"],
+      registeredAt: item["登録日時"],
+      region: item["国"] || "",
       url: item["元URL"]
     }));
 
-    // 新着順(日付が新しい順)に並び替え
+    // 新着順(記事の公開日が新しい順)に並び替え
     DATA.sort((a, b) => new Date(b.date) - new Date(a.date));
 
     MEMOS = json.memos || {};
+
+    updateRegionsFromData();
 
     document.getElementById("loadingState").style.display = "none";
     render();
@@ -413,13 +535,24 @@ function handleLoadError(err) {
 document.getElementById("retryBtn").addEventListener("click", loadData);
 
 function renderChips() {
-  const el = document.getElementById("fieldChips");
-  el.innerHTML = FIELDS.map(f =>
+  const fieldEl = document.getElementById("fieldChips");
+  fieldEl.innerHTML = FIELDS.map(f =>
     `<div class="chip ${f === activeField ? "active" : ""}" data-field="${f}">${f}</div>`
   ).join("");
-  el.querySelectorAll(".chip").forEach(chip => {
+  fieldEl.querySelectorAll(".chip").forEach(chip => {
     chip.addEventListener("click", () => {
       activeField = chip.dataset.field;
+      render();
+    });
+  });
+
+  const regionEl = document.getElementById("regionChips");
+  regionEl.innerHTML = REGIONS.map(r =>
+    `<div class="chip ${r === activeRegion ? "active" : ""}" data-region="${r}">${r}</div>`
+  ).join("");
+  regionEl.querySelectorAll(".chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      activeRegion = chip.dataset.region;
       render();
     });
   });
@@ -430,8 +563,9 @@ function render() {
   const q = query.trim().toLowerCase();
   const filtered = DATA.filter(item => {
     const matchesField = activeField === "すべて" || item.field === activeField;
+    const matchesRegion = activeRegion === "すべて" || item.region === activeRegion;
     const matchesQuery = !q || item.title.toLowerCase().includes(q) || item.summary.toLowerCase().includes(q);
-    return matchesField && matchesQuery;
+    return matchesField && matchesRegion && matchesQuery;
   });
 
   document.getElementById("countLine").textContent = `${filtered.length}件表示中(全${DATA.length}件)`;
@@ -450,6 +584,10 @@ function render() {
     <div class="card">
       <div class="card-top">
         <span class="field-tag">${item.field}</span>
+        <div class="card-top-right">
+          ${item.region ? `<span class="field-tag" style="background:#F1F3F5;color:#6B7580;">${item.region}</span>` : ""}
+          ${isNewItem(item.date) ? '<span class="new-badge">🆕 NEW</span>' : ""}
+        </div>
       </div>
       <div class="card-title"><a href="${item.url}" target="_blank" rel="noopener">${item.title}</a></div>
       <div class="card-summary">${item.summary}</div>
@@ -468,21 +606,26 @@ function render() {
         </button>
       </div>
       <div class="memo-section">
-        <div class="memo-header">💬 メモ ${(MEMOS[item.id] || []).length}件</div>
-        <div class="memo-list">
-          ${(MEMOS[item.id] || []).map(m => `
-            <div class="memo-item">
-              <div class="memo-item-top">
-                <span class="memo-author">${escapeAttr(m.author)}</span>
-                <span class="memo-date">${escapeAttr(m.date)}</span>
+        <div class="memo-header" data-toggle-id="${item.id}">💬 メモ ${(MEMOS[item.id] || []).length}件 <span style="font-size:11px;color:#9AA3AB;">(クリックで開閉)</span></div>
+        <div class="memo-body" data-body-id="${item.id}" style="display:none;">
+          <div class="memo-list">
+            ${(MEMOS[item.id] || []).map(m => `
+              <div class="memo-item">
+                <div class="memo-item-top">
+                  <span class="memo-author">${escapeAttr(m.author)}</span>
+                  <span class="memo-date">${escapeAttr(m.date)}</span>
+                </div>
+                <div class="memo-content">${escapeAttr(m.content)}</div>
               </div>
-              <div class="memo-content">${escapeAttr(m.content)}</div>
+            `).join("")}
+          </div>
+          <div class="memo-input-row">
+            <div class="memo-input-top-row">
+              <input type="text" class="memo-name-input" placeholder="お名前(任意)" data-id="${item.id}" value="${escapeAttr(savedAuthorName)}">
+              <input type="text" class="memo-input" placeholder="気づいたことをメモ..." data-id="${item.id}">
             </div>
-          `).join("")}
-        </div>
-        <div class="memo-input-row">
-          <input type="text" class="memo-input" placeholder="気づいたことをメモ..." data-id="${item.id}">
-          <button class="memo-submit-btn" data-id="${item.id}">投稿</button>
+            <button class="memo-submit-btn" data-id="${item.id}">投稿</button>
+          </div>
         </div>
       </div>
     </div>
@@ -502,20 +645,25 @@ function render() {
       }
     });
   });
+  grid.querySelectorAll(".memo-header").forEach(header => {
+    header.addEventListener("click", () => {
+      const body = grid.querySelector(`.memo-body[data-body-id="${header.dataset.toggleId}"]`);
+      body.style.display = body.style.display === "none" ? "block" : "none";
+    });
+  });
 }
 
 function onMemoSubmit(btn) {
   const id = btn.dataset.id;
   const input = document.querySelector(`.memo-input[data-id="${id}"]`);
+  const nameInput = document.querySelector(`.memo-name-input[data-id="${id}"]`);
   const content = input.value.trim();
   if (!content) return;
 
-  let author = localStorage.getItem("artKbAuthorName");
-  if (!author) {
-    author = prompt("お名前を入力してください(次回から自動入力されます)");
-    if (!author) return;
-    localStorage.setItem("artKbAuthorName", author);
-  }
+  const rawName = nameInput.value.trim();
+  const author = rawName || "匿名";
+  localStorage.setItem("artKbAuthorName", rawName); // 空欄なら次回も空欄のまま(=匿名希望を記憶)
+  savedAuthorName = rawName;
 
   if (!MEMOS[id]) MEMOS[id] = [];
   MEMOS[id].push({ author, content, date: "たった今" });
@@ -535,8 +683,16 @@ function escapeAttr(str) {
   return String(str || "").replace(/"/g, "&quot;");
 }
 
+function isNewItem(publishDate) {
+  if (!publishDate) return false;
+  const published = new Date(publishDate);
+  const hoursSince = (Date.now() - published.getTime()) / 3600000;
+  return hoursSince <= 48; // 公開から48時間以内はNEW扱い
+}
+
 // { "記事ID": "interested" | "not_interested" } の形でブラウザに保存
 let feedbackState = JSON.parse(localStorage.getItem("artKbFeedback") || "{}");
+let savedAuthorName = localStorage.getItem("artKbAuthorName") || "";
 
 function onInterestClick(btn) {
   const id = btn.dataset.id;
@@ -572,6 +728,43 @@ function onInterestClick(btn) {
 document.getElementById("searchInput").addEventListener("input", (e) => {
   query = e.target.value;
   render();
+});
+
+document.getElementById("addNewsBtn").addEventListener("click", () => {
+  const form = document.getElementById("addNewsForm");
+  form.style.display = form.style.display === "none" ? "flex" : "none";
+});
+
+document.getElementById("addNewsSubmitBtn").addEventListener("click", () => {
+  const title = document.getElementById("formTitle").value.trim();
+  if (!title) {
+    document.getElementById("formNote").textContent = "タイトルは必須です";
+    return;
+  }
+
+  const payload = {
+    action: "manualAdd",
+    title: title,
+    url: document.getElementById("formUrl").value.trim(),
+    field: document.getElementById("formField").value,
+    country: document.getElementById("formCountry").value.trim(),
+    importance: document.getElementById("formImportance").value,
+    summary: document.getElementById("formSummary").value.trim(),
+    author: document.getElementById("formAuthor").value.trim()
+  };
+
+  fetch(API_URL, {
+    method: "POST",
+    mode: "no-cors",
+    credentials: "include",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify(payload)
+  }).catch(err => console.error("手動追加エラー:", err));
+
+  document.getElementById("formNote").textContent = "送信しました。数秒後に画面を再読み込みすると反映されます。";
+  ["formTitle","formUrl","formCountry","formSummary"].forEach(id => document.getElementById(id).value = "");
+  document.getElementById("formField").value = "";
+  document.getElementById("formImportance").value = "中";
 });
 
 loadData();
