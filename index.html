@@ -186,6 +186,7 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
+    min-width: 0;
   }
 
   .card-top {
@@ -193,6 +194,7 @@
     justify-content: space-between;
     align-items: flex-start;
     gap: 8px;
+    flex-wrap: wrap;
   }
   .field-tag {
     font-size: 14px;
@@ -376,6 +378,56 @@
   }
   .memo-submit-btn:hover {
     background: var(--blue-dark);
+  }
+  .edit-toggle-btn {
+    cursor: pointer;
+    font-size: 13px;
+    padding: 3px;
+    opacity: 0.6;
+  }
+  .edit-toggle-btn:hover { opacity: 1; }
+  .edit-form {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: var(--bg);
+    border: 1px solid var(--gray-line);
+    border-radius: 8px;
+    padding: 10px;
+  }
+  .edit-form input, .edit-form select, .edit-form textarea {
+    padding: 7px 9px;
+    border: 1px solid var(--gray-line);
+    border-radius: 6px;
+    font-size: 12.5px;
+    font-family: inherit;
+    width: 100%;
+  }
+  .edit-form .form-row {
+    display: flex;
+    gap: 6px;
+  }
+  .edit-form .form-row select, .edit-form .form-row input {
+    flex: 1;
+  }
+  .edit-save-btn {
+    padding: 7px 14px;
+    border: none;
+    border-radius: 6px;
+    background: var(--blue);
+    color: var(--white);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .edit-cancel-btn {
+    padding: 7px 14px;
+    border: 1px solid var(--gray-line);
+    border-radius: 6px;
+    background: var(--white);
+    color: var(--gray-body);
+    font-size: 12.5px;
+    cursor: pointer;
   }
 
   .empty-state {
@@ -615,10 +667,34 @@ function render() {
         <div class="card-top-right">
           ${item.region ? `<span class="region-tag">${item.region}</span>` : ""}
           ${isNewItem(item.date) ? '<span class="new-badge">🆕 NEW</span>' : ""}
+          <span class="edit-toggle-btn" data-edit-id="${item.id}" title="編集">✏️</span>
         </div>
       </div>
-      <div class="card-title"><a href="${item.url}" target="_blank" rel="noopener">${item.title}</a></div>
-      <div class="card-summary">${item.summary}</div>
+      <div class="card-title" data-title-id="${item.id}"><a href="${item.url}" target="_blank" rel="noopener">${item.title}</a></div>
+      <div class="card-summary" data-summary-id="${item.id}">${item.summary}</div>
+      <div class="edit-form" data-edit-form-id="${item.id}" style="display:none;">
+        <input type="text" class="edit-title-input" data-id="${item.id}" value="${escapeAttr(item.title)}" placeholder="タイトル">
+        <input type="text" class="edit-url-input" data-id="${item.id}" value="${escapeAttr(item.url)}" placeholder="URL">
+        <div class="form-row">
+          <select class="edit-field-select" data-id="${item.id}">
+            <option value="ART/生殖医療テクノロジー動向" ${item.field === "ART/生殖医療テクノロジー動向" ? "selected" : ""}>ART/生殖医療テクノロジー動向</option>
+            <option value="規制・政策動向" ${item.field === "規制・政策動向" ? "selected" : ""}>規制・政策動向</option>
+            <option value="学術研究" ${item.field === "学術研究" ? "selected" : ""}>学術研究</option>
+            <option value="業界動向・統計" ${item.field === "業界動向・統計" ? "selected" : ""}>業界動向・統計</option>
+          </select>
+          <input type="text" class="edit-country-input" data-id="${item.id}" value="${escapeAttr(item.region)}" placeholder="国">
+          <select class="edit-importance-select" data-id="${item.id}">
+            <option value="高" ${item.importanceLabel === "高" ? "selected" : ""}>重要度: 高</option>
+            <option value="中" ${item.importanceLabel === "中" ? "selected" : ""}>重要度: 中</option>
+            <option value="低" ${item.importanceLabel === "低" ? "selected" : ""}>重要度: 低</option>
+          </select>
+        </div>
+        <textarea class="edit-summary-input" data-id="${item.id}" rows="2" placeholder="要約">${escapeAttr(item.summary)}</textarea>
+        <div class="form-row">
+          <button class="edit-save-btn" data-id="${item.id}">保存</button>
+          <button class="edit-cancel-btn" data-id="${item.id}">キャンセル</button>
+        </div>
+      </div>
       <div class="card-meta">
         <span class="source-badge">${item.source}${item.poster ? " ・ " + item.poster : ""}</span>
         <span>${item.date}</span>
@@ -679,6 +755,68 @@ function render() {
       body.style.display = body.style.display === "none" ? "block" : "none";
     });
   });
+
+  grid.querySelectorAll(".edit-toggle-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.editId;
+      const form = grid.querySelector(`.edit-form[data-edit-form-id="${id}"]`);
+      const titleEl = grid.querySelector(`.card-title[data-title-id="${id}"]`);
+      const summaryEl = grid.querySelector(`.card-summary[data-summary-id="${id}"]`);
+      const opening = form.style.display === "none";
+      form.style.display = opening ? "flex" : "none";
+      titleEl.style.display = opening ? "none" : "block";
+      summaryEl.style.display = opening ? "none" : "block";
+    });
+  });
+
+  grid.querySelectorAll(".edit-cancel-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.id;
+      grid.querySelector(`.edit-form[data-edit-form-id="${id}"]`).style.display = "none";
+      grid.querySelector(`.card-title[data-title-id="${id}"]`).style.display = "block";
+      grid.querySelector(`.card-summary[data-summary-id="${id}"]`).style.display = "block";
+    });
+  });
+
+  grid.querySelectorAll(".edit-save-btn").forEach(btn => {
+    btn.addEventListener("click", () => onEditSave(btn));
+  });
+}
+
+function onEditSave(btn) {
+  const id = btn.dataset.id;
+  const grid = document.getElementById("cardGrid");
+
+  const title = grid.querySelector(`.edit-title-input[data-id="${id}"]`).value.trim();
+  const url = grid.querySelector(`.edit-url-input[data-id="${id}"]`).value.trim();
+  const field = grid.querySelector(`.edit-field-select[data-id="${id}"]`).value;
+  const country = grid.querySelector(`.edit-country-input[data-id="${id}"]`).value.trim();
+  const importance = grid.querySelector(`.edit-importance-select[data-id="${id}"]`).value;
+  const summary = grid.querySelector(`.edit-summary-input[data-id="${id}"]`).value.trim();
+
+  if (!title) return;
+
+  // ローカルのDATAも即時更新して見た目に反映
+  const item = DATA.find(d => String(d.id) === String(id));
+  if (item) {
+    item.title = title;
+    item.url = url;
+    item.field = field;
+    item.region = country;
+    item.importance = IMPORTANCE_MAP[importance] || "mid";
+    item.importanceLabel = importance;
+    item.summary = summary;
+  }
+
+  fetch(API_URL, {
+    method: "POST",
+    mode: "no-cors",
+    credentials: "include",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({ action: "updateArticle", id: id, title, url, field, country, importance, summary })
+  }).catch(err => console.error("編集保存エラー:", err));
+
+  render();
 }
 
 function onMemoSubmit(btn) {
@@ -709,6 +847,25 @@ function onMemoSubmit(btn) {
 
 function escapeAttr(str) {
   return String(str || "").replace(/"/g, "&quot;");
+}
+
+function escapeHtml(str) {
+  return String(str || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+// Slackのmrkdwn記法(<url|タイトル>、*太字*)をHTML表示用に変換する
+function formatReportContent(content) {
+  let html = escapeHtml(content);
+  // <url|テキスト> → リンク
+  html = html.replace(/&lt;(https?:\/\/[^|&]+)\|([^&]+?)&gt;/g, '<a href="$1" target="_blank" rel="noopener" style="color:var(--blue);">$2</a>');
+  // *太字*
+  html = html.replace(/\*([^*]+)\*/g, '<strong>$1</strong>');
+  // _斜体_(分野の見出しに使われている)
+  html = html.replace(/_([^_]+)_/g, '<em>$1</em>');
+  return html;
 }
 
 const FIELD_COLORS = {
@@ -794,10 +951,10 @@ function renderReportPanel() {
   panel.innerHTML = REPORTS.map((r, idx) => `
     <div style="border:1px solid var(--gray-line);border-radius:8px;">
       <div class="report-header" data-report-idx="${idx}" style="padding:10px 14px;cursor:pointer;font-size:13px;font-weight:600;color:var(--navy);display:flex;justify-content:space-between;">
-        <span>📅 ${escapeAttr(r.period)}(送信: ${escapeAttr(r.sentAt)})</span>
+        <span>📅 ${escapeHtml(r.period)}(送信: ${escapeHtml(r.sentAt)})</span>
         <span style="color:#9AA3AB;font-weight:400;">クリックで開閉</span>
       </div>
-      <div class="report-body" data-report-body-idx="${idx}" style="display:none;padding:0 14px 14px;white-space:pre-wrap;font-size:12.5px;line-height:1.7;color:var(--gray-body);">${escapeAttr(r.content)}</div>
+      <div class="report-body" data-report-body-idx="${idx}" style="display:none;padding:0 14px 14px;white-space:pre-wrap;font-size:12.5px;line-height:1.7;color:var(--gray-body);">${formatReportContent(r.content)}</div>
     </div>
   `).join("");
 
