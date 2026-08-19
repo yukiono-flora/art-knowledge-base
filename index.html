@@ -151,11 +151,23 @@
     border-color: var(--blue);
     color: var(--white);
   }
+  .count-line-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 14px 2px 18px;
+  }
   .count-line {
     font-size: 12px;
     color: #8A95A0;
-    margin: 14px 2px 18px;
   }
+  .report-link {
+    font-size: 12px;
+    color: var(--blue);
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .report-link:hover { text-decoration: underline; }
 
   /* Cards */
   .grid {
@@ -410,6 +422,7 @@
     <input class="search-input" id="searchInput" type="text" placeholder="キーワードで検索(タイトル・要約)">
     <button class="add-news-btn" id="addNewsBtn">+ ニュースを追加</button>
   </div>
+  <div class="add-news-form" id="reportPanel" style="display:none;"></div>
   <div class="add-news-form" id="addNewsForm" style="display:none;">
     <div class="form-row">
       <input type="text" id="formTitle" placeholder="タイトル(必須)">
@@ -442,7 +455,10 @@
     <span style="font-size:12px; color:#8A95A0; flex-shrink:0;">国:</span>
     <div class="chip-row" id="regionChips" style="margin-bottom:0;"></div>
   </div>
-  <div class="count-line" id="countLine"></div>
+  <div class="count-line-row">
+    <span class="count-line" id="countLine"></span>
+    <span class="report-link" id="reportToggleBtn">📊 直近の週次レポートを見る →</span>
+  </div>
 </div>
 
 <div class="grid" id="cardGrid"></div>
@@ -471,7 +487,8 @@ function updateRegionsFromData() {
   REGIONS = ["すべて", ...uniqueRegions];
 }
 let DATA = [];
-let MEMOS = {}; // { "記事ID": [{author, content, date}, ...] }
+let MEMOS = {};
+let REPORTS = []; // { "記事ID": [{author, content, date}, ...] }
 
 // GAS Web AppはCORSに対応していないため、<script>タグを使うJSONP方式でデータを取得する
 function loadData() {
@@ -516,6 +533,7 @@ function loadData() {
     DATA.sort((a, b) => new Date(b.date) - new Date(a.date));
 
     MEMOS = json.memos || {};
+    REPORTS = json.reports || [];
 
     updateRegionsFromData();
 
@@ -756,6 +774,40 @@ document.getElementById("addNewsBtn").addEventListener("click", () => {
   const form = document.getElementById("addNewsForm");
   form.style.display = form.style.display === "none" ? "flex" : "none";
 });
+
+document.getElementById("reportToggleBtn").addEventListener("click", () => {
+  const panel = document.getElementById("reportPanel");
+  if (panel.style.display === "none") {
+    renderReportPanel();
+    panel.style.display = "flex";
+  } else {
+    panel.style.display = "none";
+  }
+});
+
+function renderReportPanel() {
+  const panel = document.getElementById("reportPanel");
+  if (REPORTS.length === 0) {
+    panel.innerHTML = `<div style="font-size:13px;color:#9AA3AB;">まだ週次レポートは送信されていません。</div>`;
+    return;
+  }
+  panel.innerHTML = REPORTS.map((r, idx) => `
+    <div style="border:1px solid var(--gray-line);border-radius:8px;">
+      <div class="report-header" data-report-idx="${idx}" style="padding:10px 14px;cursor:pointer;font-size:13px;font-weight:600;color:var(--navy);display:flex;justify-content:space-between;">
+        <span>📅 ${escapeAttr(r.period)}(送信: ${escapeAttr(r.sentAt)})</span>
+        <span style="color:#9AA3AB;font-weight:400;">クリックで開閉</span>
+      </div>
+      <div class="report-body" data-report-body-idx="${idx}" style="display:none;padding:0 14px 14px;white-space:pre-wrap;font-size:12.5px;line-height:1.7;color:var(--gray-body);">${escapeAttr(r.content)}</div>
+    </div>
+  `).join("");
+
+  panel.querySelectorAll(".report-header").forEach(header => {
+    header.addEventListener("click", () => {
+      const body = panel.querySelector(`.report-body[data-report-body-idx="${header.dataset.reportIdx}"]`);
+      body.style.display = body.style.display === "none" ? "block" : "none";
+    });
+  });
+}
 
 document.getElementById("addNewsSubmitBtn").addEventListener("click", () => {
   const title = document.getElementById("formTitle").value.trim();
