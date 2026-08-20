@@ -151,6 +151,24 @@
     border-color: var(--blue);
     color: var(--white);
   }
+  .region-chip {
+    padding: 4px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--gray-line);
+    background: var(--white);
+    font-size: 12px;
+    color: #9AA3AB;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.15s ease;
+  }
+  .region-chip:hover { border-color: #B8C0C7; color: #6B7580; }
+  .region-chip.active {
+    background: #F1F3F5;
+    border-color: #C7CDD3;
+    color: #4A5158;
+    font-weight: 600;
+  }
   .count-line-row {
     display: flex;
     justify-content: space-between;
@@ -214,12 +232,10 @@
     color: #6B7580;
   }
   .new-badge {
-    font-size: 12px;
+    font-size: 12.5px;
     font-weight: 700;
-    color: var(--white);
-    background: var(--red);
-    padding: 5px 12px;
-    border-radius: 999px;
+    color: #0F6E56;
+    letter-spacing: 0.03em;
     white-space: nowrap;
   }
   .card-top-right {
@@ -628,9 +644,9 @@ function renderChips() {
 
   const regionEl = document.getElementById("regionChips");
   regionEl.innerHTML = REGIONS.map(r =>
-    `<div class="chip ${r === activeRegion ? "active" : ""}" data-region="${r}">${r}</div>`
+    `<div class="region-chip ${r === activeRegion ? "active" : ""}" data-region="${r}">${r}</div>`
   ).join("");
-  regionEl.querySelectorAll(".chip").forEach(chip => {
+  regionEl.querySelectorAll(".region-chip").forEach(chip => {
     chip.addEventListener("click", () => {
       activeRegion = chip.dataset.region;
       render();
@@ -666,7 +682,7 @@ function render() {
         <span class="field-tag" style="${fieldTagStyle(item.field)}">${item.field}</span>
         <div class="card-top-right">
           ${item.region ? `<span class="region-tag">${item.region}</span>` : ""}
-          ${isNewItem(item.date) ? '<span class="new-badge">🆕 NEW</span>' : ""}
+          ${isNewItem(item.date) ? '<span class="new-badge">NEW</span>' : ""}
           <span class="edit-toggle-btn" data-edit-id="${item.id}" title="編集">✏️</span>
         </div>
       </div>
