@@ -502,13 +502,10 @@
   <div class="add-news-form" id="addNewsForm" style="display:none;">
     <div class="form-row">
       <input type="text" id="formUrl" placeholder="ニュース記事のURLを貼り付け">
-      <button class="add-news-submit-btn" id="addNewsSubmitBtn">AIで判定して登録</button>
+      <button class="add-news-submit-btn" id="addNewsSubmitBtn">登録する</button>
     </div>
     <div style="font-size:11.5px;color:#9AA3AB;">
-      分野・重要度・国・要約はAIが翌朝の自動収集タイミングでまとめて判定します(即時ではありません)。ページ内容が取得できない場合は、下の欄にタイトルを直接入力してください(任意)。
-    </div>
-    <div class="form-row">
-      <input type="text" id="formFallbackTitle" placeholder="タイトル(自動取得できない場合のみ入力)">
+      タイトル・分野・重要度・国・要約はAIが翌朝までにまとめて判定します。
     </div>
     <div class="form-note" id="formNote"></div>
   </div>
@@ -981,28 +978,51 @@ function renderReportPanel() {
 
 document.getElementById("addNewsSubmitBtn").addEventListener("click", () => {
   const url = document.getElementById("formUrl").value.trim();
+
   if (!url) {
     document.getElementById("formNote").textContent = "URLを入力してください";
     return;
   }
 
-  const payload = {
-    action: "manualAdd",
-    url: url,
-    fallbackTitle: document.getElementById("formFallbackTitle").value.trim()
+  const submitBtn = document.getElementById("addNewsSubmitBtn");
+  submitBtn.disabled = true;
+  document.getElementById("formNote").textContent = "登録中...";
+
+  const callbackName = "artKbAddCallback_" + Date.now();
+  const timeoutId = setTimeout(() => {
+    if (window[callbackName]) {
+      delete window[callbackName];
+      submitBtn.disabled = false;
+      document.getElementById("formNote").textContent = "応答がありませんでした。時間をおいて再度お試しください。";
+    }
+  }, 20000);
+
+  window[callbackName] = function (result) {
+    clearTimeout(timeoutId);
+    delete window[callbackName];
+    submitBtn.disabled = false;
+
+    if (result.status === "ok") {
+      document.getElementById("formNote").textContent = "登録しました。「判定待ち」の状態で表示されます(翌朝AIが分野・重要度・国を判定します)。画面を再読み込みしてください。";
+      document.getElementById("formUrl").value = "";
+    } else if (result.status === "skipped" && result.reason === "duplicate_url") {
+      document.getElementById("formNote").textContent = "このURLはすでに登録済みです。";
+    } else if (result.reason === "title_not_found") {
+      document.getElementById("formNote").textContent = "ページからタイトルを取得できませんでした。URLが正しいか確認してください。";
+    } else {
+      document.getElementById("formNote").textContent = "登録に失敗しました。URLが正しいか確認してください。";
+    }
   };
 
-  fetch(API_URL, {
-    method: "POST",
-    mode: "no-cors",
-    credentials: "include",
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify(payload)
-  }).catch(err => console.error("手動追加エラー:", err));
-
-  document.getElementById("formNote").textContent = "送信しました。「判定待ち」の状態で一覧に表示されます。翌朝の自動収集タイミングでAIが分野・重要度・国を判定します。";
-  document.getElementById("formUrl").value = "";
-  document.getElementById("formFallbackTitle").value = "";
+  const script = document.createElement("script");
+  script.src = API_URL + "?action=manualAdd&url=" + encodeURIComponent(url) + "&callback=" + callbackName;
+  script.onerror = () => {
+    clearTimeout(timeoutId);
+    delete window[callbackName];
+    submitBtn.disabled = false;
+    document.getElementById("formNote").textContent = "通信に失敗しました。もう一度お試しください。";
+  };
+  document.body.appendChild(script);
 });
 
 loadData();
