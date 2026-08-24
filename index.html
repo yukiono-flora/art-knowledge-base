@@ -231,6 +231,14 @@
     background: #F1F3F5;
     color: #6B7580;
   }
+  .pending-tag {
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: #FAEEDA;
+    color: #633806;
+  }
   .new-badge {
     font-size: 12.5px;
     font-weight: 700;
@@ -493,28 +501,14 @@
   <div class="add-news-form" id="reportPanel" style="display:none;"></div>
   <div class="add-news-form" id="addNewsForm" style="display:none;">
     <div class="form-row">
-      <input type="text" id="formTitle" placeholder="タイトル(必須)">
-      <input type="text" id="formUrl" placeholder="URL">
+      <input type="text" id="formUrl" placeholder="ニュース記事のURLを貼り付け">
+      <button class="add-news-submit-btn" id="addNewsSubmitBtn">AIで判定して登録</button>
+    </div>
+    <div style="font-size:11.5px;color:#9AA3AB;">
+      分野・重要度・国・要約はAIが翌朝の自動収集タイミングでまとめて判定します(即時ではありません)。ページ内容が取得できない場合は、下の欄にタイトルを直接入力してください(任意)。
     </div>
     <div class="form-row">
-      <select id="formField">
-        <option value="">分野を選択</option>
-        <option>ART/生殖医療テクノロジー動向</option>
-        <option>規制・政策動向</option>
-        <option>学術研究</option>
-        <option>業界動向・統計</option>
-      </select>
-      <input type="text" id="formCountry" placeholder="国(例: 日本, アメリカ)">
-      <select id="formImportance">
-        <option value="中">重要度: 中</option>
-        <option value="高">重要度: 高</option>
-        <option value="低">重要度: 低</option>
-      </select>
-    </div>
-    <textarea id="formSummary" placeholder="要約・コメント" rows="2"></textarea>
-    <div class="form-row">
-      <input type="text" id="formAuthor" placeholder="お名前(任意)">
-      <button class="add-news-submit-btn" id="addNewsSubmitBtn">登録する</button>
+      <input type="text" id="formFallbackTitle" placeholder="タイトル(自動取得できない場合のみ入力)">
     </div>
     <div class="form-note" id="formNote"></div>
   </div>
@@ -594,6 +588,7 @@ function loadData() {
       date: item["公開日"],
       registeredAt: item["登録日時"],
       region: item["国"] || "",
+      status: item["ステータス"] || "",
       url: item["元URL"]
     }));
 
@@ -679,7 +674,9 @@ function render() {
   grid.innerHTML = filtered.map(item => `
     <div class="card">
       <div class="card-top">
-        <span class="field-tag" style="${fieldTagStyle(item.field)}">${item.field}</span>
+        ${item.status === "判定待ち"
+          ? `<span class="pending-tag">⏳ 判定待ち(翌朝までに自動分類されます)</span>`
+          : `<span class="field-tag" style="${fieldTagStyle(item.field)}">${item.field}</span>`}
         <div class="card-top-right">
           ${item.region ? `<span class="region-tag">${item.region}</span>` : ""}
           ${isNewItem(item.date) ? '<span class="new-badge">NEW</span>' : ""}
@@ -983,21 +980,16 @@ function renderReportPanel() {
 }
 
 document.getElementById("addNewsSubmitBtn").addEventListener("click", () => {
-  const title = document.getElementById("formTitle").value.trim();
-  if (!title) {
-    document.getElementById("formNote").textContent = "タイトルは必須です";
+  const url = document.getElementById("formUrl").value.trim();
+  if (!url) {
+    document.getElementById("formNote").textContent = "URLを入力してください";
     return;
   }
 
   const payload = {
     action: "manualAdd",
-    title: title,
-    url: document.getElementById("formUrl").value.trim(),
-    field: document.getElementById("formField").value,
-    country: document.getElementById("formCountry").value.trim(),
-    importance: document.getElementById("formImportance").value,
-    summary: document.getElementById("formSummary").value.trim(),
-    author: document.getElementById("formAuthor").value.trim()
+    url: url,
+    fallbackTitle: document.getElementById("formFallbackTitle").value.trim()
   };
 
   fetch(API_URL, {
@@ -1008,10 +1000,9 @@ document.getElementById("addNewsSubmitBtn").addEventListener("click", () => {
     body: JSON.stringify(payload)
   }).catch(err => console.error("手動追加エラー:", err));
 
-  document.getElementById("formNote").textContent = "送信しました。数秒後に画面を再読み込みすると反映されます。";
-  ["formTitle","formUrl","formCountry","formSummary"].forEach(id => document.getElementById(id).value = "");
-  document.getElementById("formField").value = "";
-  document.getElementById("formImportance").value = "中";
+  document.getElementById("formNote").textContent = "送信しました。「判定待ち」の状態で一覧に表示されます。翌朝の自動収集タイミングでAIが分野・重要度・国を判定します。";
+  document.getElementById("formUrl").value = "";
+  document.getElementById("formFallbackTitle").value = "";
 });
 
 loadData();
