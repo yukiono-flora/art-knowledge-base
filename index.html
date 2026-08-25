@@ -552,6 +552,13 @@ function updateRegionsFromData() {
   REGIONS = ["すべて", ...uniqueRegions];
 }
 
+// 複数国が含まれる場合(例:"デンマーク, アメリカ")は「グローバル」として扱う
+function normalizeRegion(region) {
+  if (!region) return "";
+  const hasMultiple = /[,、]/.test(region) || /[・&]/.test(region);
+  return hasMultiple ? "グローバル" : region.trim();
+}
+
 function itemMonthLabel(dateStr) {
   const d = new Date(dateStr);
   if (isNaN(d)) return null;
@@ -609,7 +616,7 @@ function loadData() {
       poster: item["投稿者"],
       date: item["公開日"],
       registeredAt: item["登録日時"],
-      region: item["国"] || "",
+      region: normalizeRegion(item["国"]),
       status: item["ステータス"] || "",
       url: item["元URL"]
     }));
