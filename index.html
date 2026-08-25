@@ -514,6 +514,10 @@
     <span style="font-size:12px; color:#8A95A0; flex-shrink:0;">国:</span>
     <div class="chip-row" id="regionChips" style="margin-bottom:0;"></div>
   </div>
+  <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+    <span style="font-size:12px; color:#8A95A0; flex-shrink:0;">月:</span>
+    <div class="chip-row" id="monthChips" style="margin-bottom:0;"></div>
+  </div>
   <div class="count-line-row">
     <span class="count-line" id="countLine"></span>
     <span class="report-link" id="reportToggleBtn">📊 直近の週次レポートを見る →</span>
@@ -536,14 +540,35 @@ const IMPORTANCE_MAP = { "高": "high", "中": "mid", "低": "low" };
 
 const FIELDS = ["すべて", "ART/生殖医療テクノロジー動向", "規制・政策動向", "学術研究", "業界動向・統計"];
 let REGIONS = ["すべて"];
+let MONTHS = ["すべて"];
 let activeField = "すべて";
 let activeRegion = "すべて";
+let activeMonth = "すべて";
 let query = "";
 
 function updateRegionsFromData() {
   const uniqueRegions = [...new Set(DATA.map(item => item.region).filter(Boolean))];
   uniqueRegions.sort((a, b) => a.localeCompare(b, "ja")); // あいうえお順
   REGIONS = ["すべて", ...uniqueRegions];
+}
+
+function itemMonthLabel(dateStr) {
+  const d = new Date(dateStr);
+  if (isNaN(d)) return null;
+  return `${d.getFullYear()}年${d.getMonth() + 1}月`;
+}
+
+function updateMonthsFromData() {
+  const uniqueMonths = [...new Set(DATA.map(item => itemMonthLabel(item.date)).filter(Boolean))];
+  // 新しい月が先頭に来るように、実際の年月値で降順ソート
+  uniqueMonths.sort((a, b) => {
+    const parse = (s) => {
+      const m = s.match(/(\d+)年(\d+)月/);
+      return m ? parseInt(m[1]) * 100 + parseInt(m[2]) : 0;
+    };
+    return parse(b) - parse(a);
+  });
+  MONTHS = ["すべて", ...uniqueMonths];
 }
 let DATA = [];
 let MEMOS = {};
@@ -596,6 +621,7 @@ function loadData() {
     REPORTS = json.reports || [];
 
     updateRegionsFromData();
+    updateMonthsFromData();
 
     document.getElementById("loadingState").style.display = "none";
     render();
@@ -644,6 +670,17 @@ function renderChips() {
       render();
     });
   });
+
+  const monthEl = document.getElementById("monthChips");
+  monthEl.innerHTML = MONTHS.map(m =>
+    `<div class="region-chip ${m === activeMonth ? "active" : ""}" data-month="${m}">${m}</div>`
+  ).join("");
+  monthEl.querySelectorAll(".region-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      activeMonth = chip.dataset.month;
+      render();
+    });
+  });
 }
 
 function render() {
@@ -652,8 +689,9 @@ function render() {
   const filtered = DATA.filter(item => {
     const matchesField = activeField === "すべて" || item.field === activeField;
     const matchesRegion = activeRegion === "すべて" || item.region === activeRegion;
+    const matchesMonth = activeMonth === "すべて" || itemMonthLabel(item.date) === activeMonth;
     const matchesQuery = !q || item.title.toLowerCase().includes(q) || item.summary.toLowerCase().includes(q);
-    return matchesField && matchesRegion && matchesQuery;
+    return matchesField && matchesRegion && matchesMonth && matchesQuery;
   });
 
   document.getElementById("countLine").textContent = `${filtered.length}件表示中(全${DATA.length}件)`;
