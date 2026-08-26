@@ -504,6 +504,9 @@
       <input type="text" id="formUrl" placeholder="ニュース記事のURLを貼り付け">
       <button class="add-news-submit-btn" id="addNewsSubmitBtn">登録する</button>
     </div>
+    <div class="form-row" id="formFallbackRow" style="display:none;">
+      <input type="text" id="formFallbackTitle" placeholder="タイトルを入力してください">
+    </div>
     <div style="font-size:11.5px;color:#9AA3AB;">
       タイトル・分野・重要度・国・要約はAIが翌朝までにまとめて判定します。
     </div>
@@ -1023,6 +1026,7 @@ function renderReportPanel() {
 
 document.getElementById("addNewsSubmitBtn").addEventListener("click", () => {
   const url = document.getElementById("formUrl").value.trim();
+  const fallbackTitle = document.getElementById("formFallbackTitle").value.trim();
 
   if (!url) {
     document.getElementById("formNote").textContent = "URLを入力してください";
@@ -1050,17 +1054,22 @@ document.getElementById("addNewsSubmitBtn").addEventListener("click", () => {
     if (result.status === "ok") {
       document.getElementById("formNote").textContent = "登録しました。「判定待ち」の状態で表示されます(翌朝AIが分野・重要度・国を判定します)。画面を再読み込みしてください。";
       document.getElementById("formUrl").value = "";
+      document.getElementById("formFallbackTitle").value = "";
+      document.getElementById("formFallbackRow").style.display = "none";
     } else if (result.status === "skipped" && result.reason === "duplicate_url") {
       document.getElementById("formNote").textContent = "このURLはすでに登録済みです。";
     } else if (result.reason === "title_not_found") {
-      document.getElementById("formNote").textContent = "ページからタイトルを取得できませんでした。URLが正しいか確認してください。";
+      document.getElementById("formFallbackRow").style.display = "flex";
+      document.getElementById("formNote").textContent = "ページからタイトルを自動取得できませんでした。上の欄にタイトルを入力して、もう一度「登録する」を押してください。";
     } else {
       document.getElementById("formNote").textContent = "登録に失敗しました。URLが正しいか確認してください。";
     }
   };
 
   const script = document.createElement("script");
-  script.src = API_URL + "?action=manualAdd&url=" + encodeURIComponent(url) + "&callback=" + callbackName;
+  script.src = API_URL + "?action=manualAdd&url=" + encodeURIComponent(url)
+    + "&fallbackTitle=" + encodeURIComponent(fallbackTitle)
+    + "&callback=" + callbackName;
   script.onerror = () => {
     clearTimeout(timeoutId);
     delete window[callbackName];
