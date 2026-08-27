@@ -583,11 +583,20 @@
   <div class="count-line-row">
     <span class="count-line" id="countLine"></span>
     <div style="display:flex; gap:16px;">
+      <span class="report-link" id="opinionToggleBtn">💬 ご意見・ご要望を送る</span>
       <span class="report-link" id="criteriaToggleBtn">ℹ️ 判定基準について</span>
       <span class="report-link" id="reportToggleBtn">📊 直近の週次レポートを見る →</span>
     </div>
   </div>
   <div class="add-news-form" id="criteriaPanel" style="display:none;"></div>
+  <div class="add-news-form" id="opinionForm" style="display:none;">
+    <textarea id="opinionContent" placeholder="ナレッジベース全体へのご意見・ご要望をお書きください" rows="3"></textarea>
+    <div class="form-row">
+      <input type="text" id="opinionAuthor" placeholder="お名前(任意、空欄で匿名)">
+      <button class="add-news-submit-btn" id="opinionSubmitBtn">送信する</button>
+    </div>
+    <div class="form-note" id="opinionNote"></div>
+  </div>
 </div>
 
 <div class="grid" id="cardGrid"></div>
@@ -1073,6 +1082,31 @@ document.getElementById("newOnlyToggle").addEventListener("click", () => {
 document.getElementById("addNewsBtn").addEventListener("click", () => {
   const form = document.getElementById("addNewsForm");
   form.style.display = form.style.display === "none" ? "flex" : "none";
+});
+
+document.getElementById("opinionToggleBtn").addEventListener("click", () => {
+  const form = document.getElementById("opinionForm");
+  form.style.display = form.style.display === "none" ? "flex" : "none";
+});
+
+document.getElementById("opinionSubmitBtn").addEventListener("click", () => {
+  const content = document.getElementById("opinionContent").value.trim();
+  if (!content) {
+    document.getElementById("opinionNote").textContent = "内容を入力してください";
+    return;
+  }
+  const author = document.getElementById("opinionAuthor").value.trim();
+
+  fetch(API_URL, {
+    method: "POST",
+    mode: "no-cors",
+    credentials: "include",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({ action: "generalFeedback", content: content, author: author })
+  }).catch(err => console.error("全体意見送信エラー:", err));
+
+  document.getElementById("opinionNote").textContent = "送信しました。ありがとうございます。";
+  document.getElementById("opinionContent").value = "";
 });
 
 document.getElementById("criteriaToggleBtn").addEventListener("click", () => {
