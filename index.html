@@ -83,6 +83,23 @@
     border-color: var(--blue);
     box-shadow: 0 0 0 3px var(--blue-soft);
   }
+  .new-only-toggle {
+    padding: 6px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--gray-line);
+    background: var(--white);
+    color: #9AA3AB;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.15s ease;
+  }
+  .new-only-toggle.active {
+    background: #0F6E56;
+    border-color: #0F6E56;
+    color: var(--white);
+  }
   .add-news-btn {
     padding: 0 20px;
     border: none;
@@ -490,7 +507,7 @@
     <div class="header-title">ARTナレッジベース</div>
     <div class="header-sub">ARCS Inc. / 内部参照用プロトタイプ</div>
   </div>
-  <div class="badge-confidential">CONFIDENTIAL</div>
+  <div style="width:1px;"></div>
 </div>
 
 <div class="toolbar">
@@ -512,7 +529,15 @@
     </div>
     <div class="form-note" id="formNote"></div>
   </div>
+  <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+    <span id="newOnlyToggle" class="new-only-toggle active">🆕 新着のみ表示</span>
+    <span style="font-size:11.5px; color:#9AA3AB;">(公開から48時間以内の記事のみ表示中。解除するとすべて表示されます)</span>
+  </div>
   <div class="chip-row" id="fieldChips"></div>
+  <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+    <span style="font-size:12px; color:#8A95A0; flex-shrink:0;">部門:</span>
+    <div class="chip-row" id="departmentChips" style="margin-bottom:0;"></div>
+  </div>
   <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
     <span style="font-size:12px; color:#8A95A0; flex-shrink:0;">国:</span>
     <div class="chip-row" id="regionChips" style="margin-bottom:0;"></div>
@@ -542,11 +567,14 @@ const API_URL = "https://script.google.com/a/macros/arcs-inc.jp/s/AKfycbydHNsQDT
 const IMPORTANCE_MAP = { "高": "high", "中": "mid", "低": "low" };
 
 const FIELDS = ["すべて", "ART/生殖医療テクノロジー動向", "規制・政策動向", "学術研究", "業界動向・統計"];
+const DEPARTMENTS = ["すべて", "開発", "臨床開発", "品質保証", "薬事", "事業開発"];
 let REGIONS = ["すべて"];
 let MONTHS = ["すべて"];
 let activeField = "すべて";
+let activeDepartment = "すべて";
 let activeRegion = "すべて";
 let activeMonth = "すべて";
+let showNewOnly = true; // 初期表示は新着のみに絞る
 let query = "";
 
 function updateRegionsFromData() {
@@ -560,6 +588,17 @@ function normalizeRegion(region) {
   if (!region) return "";
   const hasMultiple = /[,、]/.test(region) || /[・&]/.test(region);
   return hasMultiple ? "グローバル" : region.trim();
+}
+
+// ISO形式の日付文字列を "2026-08-19" のような表示用に整形する
+function formatDisplayDate(dateStr) {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (isNaN(d)) return String(dateStr);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 function itemMonthLabel(dateStr) {
@@ -620,6 +659,7 @@ function loadData() {
       date: item["公開日"],
       registeredAt: item["登録日時"],
       region: normalizeRegion(item["国"]),
+      departments: (item["部門"] || "").split(",").map(d => d.trim()).filter(Boolean),
       status: item["ステータス"] || "",
       url: item["元URL"]
     }));
@@ -681,6 +721,17 @@ function renderChips() {
     });
   });
 
+  const deptEl = document.getElementById("departmentChips");
+  deptEl.innerHTML = DEPARTMENTS.map(d =>
+    `<div class="region-chip ${d === activeDepartment ? "active" : ""}" data-department="${d}">${d}</div>`
+  ).join("");
+  deptEl.querySelectorAll(".region-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      activeDepartment = chip.dataset.department;
+      render();
+    });
+  });
+
   const monthEl = document.getElementById("monthChips");
   monthEl.innerHTML = MONTHS.map(m =>
     `<div class="region-chip ${m === activeMonth ? "active" : ""}" data-month="${m}">${m}</div>`
@@ -698,10 +749,12 @@ function render() {
   const q = query.trim().toLowerCase();
   const filtered = DATA.filter(item => {
     const matchesField = activeField === "すべて" || item.field === activeField;
+    const matchesDepartment = activeDepartment === "すべて" || item.departments.includes(activeDepartment);
     const matchesRegion = activeRegion === "すべて" || item.region === activeRegion;
     const matchesMonth = activeMonth === "すべて" || itemMonthLabel(item.date) === activeMonth;
     const matchesQuery = !q || item.title.toLowerCase().includes(q) || item.summary.toLowerCase().includes(q);
-    return matchesField && matchesRegion && matchesMonth && matchesQuery;
+    const matchesNewOnly = !showNewOnly || isNewItem(item.date);
+    return matchesField && matchesDepartment && matchesRegion && matchesMonth && matchesQuery && matchesNewOnly;
   });
 
   document.getElementById("countLine").textContent = `${filtered.length}件表示中(全${DATA.length}件)`;
@@ -723,6 +776,7 @@ function render() {
           ? `<span class="pending-tag">⏳ 判定待ち(翌朝までに自動分類されます)</span>`
           : `<span class="field-tag" style="${fieldTagStyle(item.field)}">${item.field}</span>`}
         <div class="card-top-right">
+          ${item.departments.map(d => `<span class="region-tag">${d}</span>`).join("")}
           ${item.region ? `<span class="region-tag">${item.region}</span>` : ""}
           ${isNewItem(item.date) ? '<span class="new-badge">NEW</span>' : ""}
           <span class="edit-toggle-btn" data-edit-id="${item.id}" title="編集">✏️</span>
@@ -755,7 +809,7 @@ function render() {
       </div>
       <div class="card-meta">
         <span class="source-badge">${item.source}${item.poster ? " ・ " + item.poster : ""}</span>
-        <span>${item.date}</span>
+        <span>${formatDisplayDate(item.date)}</span>
       </div>
       <div class="card-actions">
         <button class="interest-btn ${feedbackState[item.id] === "interested" ? "active" : ""}"
@@ -767,51 +821,11 @@ function render() {
           👎 興味なし
         </button>
       </div>
-      <div class="memo-section">
-        <div class="memo-header" data-toggle-id="${item.id}">💬 メモ ${(MEMOS[item.id] || []).length}件 <span style="font-size:11px;color:#9AA3AB;">(クリックで開閉)</span></div>
-        <div class="memo-body" data-body-id="${item.id}" style="display:none;">
-          <div class="memo-list">
-            ${(MEMOS[item.id] || []).map(m => `
-              <div class="memo-item">
-                <div class="memo-item-top">
-                  <span class="memo-author">${escapeAttr(m.author)}</span>
-                  <span class="memo-date">${escapeAttr(m.date)}</span>
-                </div>
-                <div class="memo-content">${escapeAttr(m.content)}</div>
-              </div>
-            `).join("")}
-          </div>
-          <div class="memo-input-row">
-            <div class="memo-input-top-row">
-              <input type="text" class="memo-name-input" placeholder="お名前(任意)" data-id="${item.id}" value="${escapeAttr(savedAuthorName)}">
-              <input type="text" class="memo-input" placeholder="気づいたことをメモ..." data-id="${item.id}">
-            </div>
-            <button class="memo-submit-btn" data-id="${item.id}">投稿</button>
-          </div>
-        </div>
-      </div>
     </div>
   `).join("");
 
   grid.querySelectorAll(".interest-btn").forEach(btn => {
     btn.addEventListener("click", () => onInterestClick(btn));
-  });
-  grid.querySelectorAll(".memo-submit-btn").forEach(btn => {
-    btn.addEventListener("click", () => onMemoSubmit(btn));
-  });
-  grid.querySelectorAll(".memo-input").forEach(input => {
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        const btn = grid.querySelector(`.memo-submit-btn[data-id="${input.dataset.id}"]`);
-        onMemoSubmit(btn);
-      }
-    });
-  });
-  grid.querySelectorAll(".memo-header").forEach(header => {
-    header.addEventListener("click", () => {
-      const body = grid.querySelector(`.memo-body[data-body-id="${header.dataset.toggleId}"]`);
-      body.style.display = body.style.display === "none" ? "block" : "none";
-    });
   });
 
   grid.querySelectorAll(".edit-toggle-btn").forEach(btn => {
@@ -982,6 +996,13 @@ function onInterestClick(btn) {
 
 document.getElementById("searchInput").addEventListener("input", (e) => {
   query = e.target.value;
+  render();
+});
+
+document.getElementById("newOnlyToggle").addEventListener("click", () => {
+  showNewOnly = !showNewOnly;
+  const el = document.getElementById("newOnlyToggle");
+  el.classList.toggle("active", showNewOnly);
   render();
 });
 
