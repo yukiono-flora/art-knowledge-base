@@ -304,19 +304,17 @@
     color: var(--gray-body);
   }
 
-  .card-meta {
+  .meta-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
-    gap: 6px;
-    font-size: 11.5px;
-    color: #9AA3AB;
+    gap: 8px;
     border-top: 1px solid var(--gray-line);
     padding-top: 10px;
     margin-top: 2px;
   }
-  .meta-right {
+  .meta-row-left {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -352,39 +350,22 @@
     padding: 8px 10px;
     line-height: 1.6;
   }
-  .card-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-  }
-  .interest-btn {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    padding: 5px 12px;
+  .flag-btn {
+    padding: 3px 10px;
     border: 1px solid var(--gray-line);
-    border-radius: 6px;
+    border-radius: 5px;
     background: var(--white);
-    color: var(--gray-body);
-    font-size: 12px;
+    color: #8A95A0;
+    font-size: 11px;
+    font-weight: 600;
     cursor: pointer;
-    transition: all 0.15s ease;
+    white-space: nowrap;
   }
-  .interest-btn:hover {
-    border-color: var(--blue);
-    color: var(--blue);
-  }
-  .interest-btn.active {
-    background: var(--blue-soft);
-    border-color: var(--blue);
-    color: var(--blue);
-    font-weight: 600;
-  }
-  .not-interest-btn.active {
-    background: #F1E4E4;
-    border-color: var(--red);
-    color: var(--red);
-    font-weight: 600;
+  .flag-btn:hover { border-color: #C0392B; color: #C0392B; }
+  .flag-btn.active {
+    border-color: #C0392B;
+    background: #FAECE7;
+    color: #C0392B;
   }
   .memo-section {
     border-top: 1px solid var(--gray-line);
@@ -883,32 +864,26 @@ function render() {
           <button class="edit-cancel-btn" data-id="${item.id}">キャンセル</button>
         </div>
       </div>
-      <div class="card-meta">
-        <span class="importance-badge importance-${item.importance}">重要度: ${item.importanceLabel}</span>
-        <span class="meta-right">
-          <span class="source-badge">${item.source}${item.poster ? " ・ " + item.poster : ""}</span>
-          <span>${formatDisplayDate(item.date)}</span>
-        </span>
+      <div class="meta-row">
+        <div class="meta-row-left">
+          <span class="importance-badge importance-${item.importance}">重要度: ${item.importanceLabel}</span>
+          ${item.reason ? `<span class="reason-toggle" data-reason-id="${item.id}">🔍理由</span>` : ""}
+        </div>
+        <button class="flag-btn ${flagState[item.id] ? "active" : ""}"
+          data-id="${item.id}" data-title="${escapeAttr(item.title)}" data-field="${escapeAttr(item.field)}" data-importance="${escapeAttr(item.importanceLabel)}">
+          ${flagState[item.id] ? "✓ 違和感を記録済み" : "この判定に違和感"}
+        </button>
       </div>
-      ${item.reason ? `
-      <div class="reason-toggle" data-reason-id="${item.id}">🔍 判定理由を見る</div>
-      <div class="reason-body" data-reason-body-id="${item.id}" style="display:none;">${escapeAttr(item.reason)}</div>
-      ` : ""}
-      <div class="card-actions">
-        <button class="interest-btn ${feedbackState[item.id] === "interested" ? "active" : ""}"
-          data-id="${item.id}" data-title="${escapeAttr(item.title)}" data-field="${escapeAttr(item.field)}" data-type="interested">
-          👍 興味あり
-        </button>
-        <button class="interest-btn not-interest-btn ${feedbackState[item.id] === "not_interested" ? "active" : ""}"
-          data-id="${item.id}" data-title="${escapeAttr(item.title)}" data-field="${escapeAttr(item.field)}" data-type="not_interested">
-          👎 興味なし
-        </button>
+      ${item.reason ? `<div class="reason-body" data-reason-body-id="${item.id}" style="display:none;">${escapeAttr(item.reason)}</div>` : ""}
+      <div class="meta-row">
+        <span class="source-badge">${item.source}${item.poster ? " ・ " + item.poster : ""}</span>
+        <span style="font-size:11.5px;color:#9AA3AB;">${formatDisplayDate(item.date)}</span>
       </div>
     </div>
   `).join("");
 
-  grid.querySelectorAll(".interest-btn").forEach(btn => {
-    btn.addEventListener("click", () => onInterestClick(btn));
+  grid.querySelectorAll(".flag-btn").forEach(btn => {
+    btn.addEventListener("click", () => onFlagClick(btn));
   });
 
   grid.querySelectorAll(".reason-toggle").forEach(toggle => {
@@ -1051,25 +1026,22 @@ function isNewItem(publishDate) {
   return hoursSince <= 48; // 公開から48時間以内はNEW扱い
 }
 
-// { "記事ID": "interested" | "not_interested" } の形でブラウザに保存
-let feedbackState = JSON.parse(localStorage.getItem("artKbFeedback") || "{}");
 let savedAuthorName = localStorage.getItem("artKbAuthorName") || "";
 
-function onInterestClick(btn) {
-  const id = btn.dataset.id;
-  const type = btn.dataset.type; // "interested" or "not_interested"
-  const current = feedbackState[id];
+// { "記事ID": true } の形でブラウザに保存(「この判定に違和感」の記録状態)
+let flagState = JSON.parse(localStorage.getItem("artKbFlags") || "{}");
 
-  // 同じボタンをもう一度押したら「取り消し(未評価に戻す)」
-  const newState = current === type ? null : type;
+function onFlagClick(btn) {
+  const id = btn.dataset.id;
+  const newState = !flagState[id];
 
   if (newState) {
-    feedbackState[id] = newState;
+    flagState[id] = true;
   } else {
-    delete feedbackState[id];
+    delete flagState[id];
   }
-  localStorage.setItem("artKbFeedback", JSON.stringify(feedbackState));
-  render(); // ボタンの見た目を更新
+  localStorage.setItem("artKbFlags", JSON.stringify(flagState));
+  render();
 
   fetch(API_URL, {
     method: "POST",
@@ -1077,13 +1049,13 @@ function onInterestClick(btn) {
     credentials: "include",
     headers: { "Content-Type": "text/plain;charset=utf-8" },
     body: JSON.stringify({
-      action: "feedback",
+      action: "flagImportance",
       id: id,
       title: btn.dataset.title,
       field: btn.dataset.field,
-      type: newState || "cancel" // 取り消した場合は "cancel" として記録
+      importance: btn.dataset.importance
     })
-  }).catch(err => console.error("フィードバック送信エラー:", err));
+  }).catch(err => console.error("違和感フラグ送信エラー:", err));
 }
 
 document.getElementById("searchInput").addEventListener("input", (e) => {
