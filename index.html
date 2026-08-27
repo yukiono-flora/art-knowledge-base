@@ -232,21 +232,23 @@
     flex-wrap: wrap;
   }
   .field-tag {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 700;
-    padding: 5px 14px;
-    border-radius: 999px;
+    padding: 3px 0 3px 10px;
+    border-left: 4px solid;
     white-space: nowrap;
     line-height: 1.3;
+    background: none;
   }
   .region-tag {
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
-    padding: 5px 12px;
-    border-radius: 999px;
     white-space: nowrap;
-    background: #F1F3F5;
     color: #6B7580;
+  }
+  .region-tag::before {
+    content: "#";
+    color: #B7BEC4;
   }
   .pending-tag {
     font-size: 12.5px;
@@ -257,16 +259,32 @@
     color: #633806;
   }
   .new-badge {
-    font-size: 12.5px;
+    display: inline-block;
+    font-size: 11px;
     font-weight: 700;
-    color: #0F6E56;
+    color: #fff;
+    background: var(--red);
+    padding: 4px 12px 4px 16px;
     letter-spacing: 0.03em;
     white-space: nowrap;
+    clip-path: polygon(0 50%, 10px 0, 100% 0, 100% 100%, 10px 100%);
   }
   .card-top-right {
     display: flex;
-    gap: 6px;
+    gap: 10px;
     align-items: center;
+  }
+  .card-top-row2 {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .hashtag-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
   }
 
   .card-title {
@@ -566,7 +584,7 @@ const API_URL = "https://script.google.com/a/macros/arcs-inc.jp/s/AKfycbydHNsQDT
 
 const IMPORTANCE_MAP = { "高": "high", "中": "mid", "低": "low" };
 
-const FIELDS = ["すべて", "ART/生殖医療テクノロジー動向", "規制・政策動向", "学術研究", "業界動向・統計"];
+const FIELDS = ["すべて", "ART/生殖医療テクノロジー動向", "規制・政策動向", "学術研究", "業界動向・統計", "その他"];
 const DEPARTMENTS = ["すべて", "開発", "臨床開発", "品質保証", "薬事", "事業開発"];
 let REGIONS = ["すべて"];
 let MONTHS = ["すべて"];
@@ -775,12 +793,14 @@ function render() {
         ${item.status === "判定待ち"
           ? `<span class="pending-tag">⏳ 判定待ち(翌朝までに自動分類されます)</span>`
           : `<span class="field-tag" style="${fieldTagStyle(item.field)}">${item.field}</span>`}
-        <div class="card-top-right">
+        <span class="edit-toggle-btn" data-edit-id="${item.id}" title="編集">✏️</span>
+      </div>
+      <div class="card-top-row2">
+        <div class="hashtag-row">
           ${item.departments.map(d => `<span class="region-tag">${d}</span>`).join("")}
           ${item.region ? `<span class="region-tag">${item.region}</span>` : ""}
-          ${isNewItem(item.date) ? '<span class="new-badge">NEW</span>' : ""}
-          <span class="edit-toggle-btn" data-edit-id="${item.id}" title="編集">✏️</span>
         </div>
+        ${isNewItem(item.date) ? '<span class="new-badge">NEW</span>' : ""}
       </div>
       <div class="card-title" data-title-id="${item.id}"><a href="${item.url}" target="_blank" rel="noopener">${item.title}</a></div>
       <div class="card-summary" data-summary-id="${item.id}">${item.summary}</div>
@@ -944,12 +964,13 @@ const FIELD_COLORS = {
   "ART/生殖医療テクノロジー動向": { bg: "#EEEDFE", color: "#3C3489" },
   "規制・政策動向": { bg: "#FAECE7", color: "#712B13" },
   "学術研究": { bg: "#E1F5EE", color: "#085041" },
-  "業界動向・統計": { bg: "#FAEEDA", color: "#633806" }
+  "業界動向・統計": { bg: "#FAEEDA", color: "#633806" },
+  "その他": { bg: "#F1F3F5", color: "#5A6570" }
 };
 
 function fieldTagStyle(field) {
   const c = FIELD_COLORS[field] || { bg: "#F1F3F5", color: "#6B7580" };
-  return `background:${c.bg};color:${c.color};`;
+  return `border-left-color:${c.color};color:${c.color};`;
 }
 
 function isNewItem(publishDate) {
