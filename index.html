@@ -308,11 +308,18 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
     font-size: 11.5px;
     color: #9AA3AB;
     border-top: 1px solid var(--gray-line);
     padding-top: 10px;
     margin-top: 2px;
+  }
+  .meta-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
   .source-badge {
     font-size: 11px;
@@ -321,6 +328,15 @@
     background: #F1F3F5;
     color: #6B7580;
   }
+  .importance-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 5px;
+  }
+  .importance-badge.importance-high { background: #FAECE7; color: #C0392B; }
+  .importance-badge.importance-mid { background: #FDEEDC; color: #B9660B; }
+  .importance-badge.importance-low { background: #F1F3F5; color: #6B7580; }
   .reason-toggle {
     font-size: 11.5px;
     color: var(--blue);
@@ -572,6 +588,10 @@
     <div class="chip-row" id="departmentChips" style="margin-bottom:0;"></div>
   </div>
   <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+    <span style="font-size:12px; color:#8A95A0; flex-shrink:0;">重要度:</span>
+    <div class="chip-row" id="importanceChips" style="margin-bottom:0;"></div>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
     <span style="font-size:12px; color:#8A95A0; flex-shrink:0;">国:</span>
     <div class="chip-row" id="regionChips" style="margin-bottom:0;"></div>
   </div>
@@ -605,10 +625,12 @@ const IMPORTANCE_MAP = { "高": "high", "中": "mid", "低": "low" };
 
 const FIELDS = ["すべて", "ART/生殖医療テクノロジー動向", "規制・政策動向", "学術研究", "業界動向・統計", "競合動向", "その他"];
 const DEPARTMENTS = ["すべて", "開発", "臨床開発", "品質保証", "薬事", "事業開発"];
+const IMPORTANCE_LEVELS = ["すべて", "高", "中", "低"];
 let REGIONS = ["すべて"];
 let MONTHS = ["すべて"];
 let activeField = "すべて";
 let activeDepartment = "すべて";
+let activeImportance = "すべて";
 let activeRegion = "すべて";
 let activeMonth = "すべて";
 let showNewOnly = true; // 初期表示は新着のみに絞る
@@ -770,6 +792,17 @@ function renderChips() {
     });
   });
 
+  const impEl = document.getElementById("importanceChips");
+  impEl.innerHTML = IMPORTANCE_LEVELS.map(i =>
+    `<div class="region-chip ${i === activeImportance ? "active" : ""}" data-importance="${i}">${i}</div>`
+  ).join("");
+  impEl.querySelectorAll(".region-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      activeImportance = chip.dataset.importance;
+      render();
+    });
+  });
+
   const monthEl = document.getElementById("monthChips");
   monthEl.innerHTML = MONTHS.map(m =>
     `<div class="region-chip ${m === activeMonth ? "active" : ""}" data-month="${m}">${m}</div>`
@@ -788,11 +821,12 @@ function render() {
   const filtered = DATA.filter(item => {
     const matchesField = activeField === "すべて" || item.field === activeField;
     const matchesDepartment = activeDepartment === "すべて" || item.departments.includes(activeDepartment);
+    const matchesImportance = activeImportance === "すべて" || item.importanceLabel === activeImportance;
     const matchesRegion = activeRegion === "すべて" || item.region === activeRegion;
     const matchesMonth = activeMonth === "すべて" || itemMonthLabel(item.date) === activeMonth;
     const matchesQuery = !q || item.title.toLowerCase().includes(q) || item.summary.toLowerCase().includes(q);
     const matchesNewOnly = !showNewOnly || isNewItem(item.date);
-    return matchesField && matchesDepartment && matchesRegion && matchesMonth && matchesQuery && matchesNewOnly;
+    return matchesField && matchesDepartment && matchesImportance && matchesRegion && matchesMonth && matchesQuery && matchesNewOnly;
   });
 
   document.getElementById("countLine").textContent = `${filtered.length}件表示中(全${DATA.length}件)`;
@@ -850,11 +884,14 @@ function render() {
         </div>
       </div>
       <div class="card-meta">
-        <span class="source-badge">${item.source}${item.poster ? " ・ " + item.poster : ""}</span>
-        <span>${formatDisplayDate(item.date)}</span>
+        <span class="importance-badge importance-${item.importance}">重要度: ${item.importanceLabel}</span>
+        <span class="meta-right">
+          <span class="source-badge">${item.source}${item.poster ? " ・ " + item.poster : ""}</span>
+          <span>${formatDisplayDate(item.date)}</span>
+        </span>
       </div>
       ${item.reason ? `
-      <div class="reason-toggle" data-reason-id="${item.id}">🔍 重要度「${item.importanceLabel}」の判定理由を見る</div>
+      <div class="reason-toggle" data-reason-id="${item.id}">🔍 判定理由を見る</div>
       <div class="reason-body" data-reason-body-id="${item.id}" style="display:none;">${escapeAttr(item.reason)}</div>
       ` : ""}
       <div class="card-actions">
