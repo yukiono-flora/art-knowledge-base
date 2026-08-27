@@ -813,6 +813,7 @@ function render() {
             <option value="規制・政策動向" ${item.field === "規制・政策動向" ? "selected" : ""}>規制・政策動向</option>
             <option value="学術研究" ${item.field === "学術研究" ? "selected" : ""}>学術研究</option>
             <option value="業界動向・統計" ${item.field === "業界動向・統計" ? "selected" : ""}>業界動向・統計</option>
+            <option value="その他" ${item.field === "その他" ? "selected" : ""}>その他</option>
           </select>
           <input type="text" class="edit-country-input" data-id="${item.id}" value="${escapeAttr(item.region)}" placeholder="国">
           <select class="edit-importance-select" data-id="${item.id}">
@@ -961,10 +962,10 @@ function formatReportContent(content) {
 }
 
 const FIELD_COLORS = {
-  "ART/生殖医療テクノロジー動向": { bg: "#EEEDFE", color: "#3C3489" },
-  "規制・政策動向": { bg: "#FAECE7", color: "#712B13" },
-  "学術研究": { bg: "#E1F5EE", color: "#085041" },
-  "業界動向・統計": { bg: "#FAEEDA", color: "#633806" },
+  "ART/生殖医療テクノロジー動向": { bg: "#EEEDFE", color: "#6D4AA8" },
+  "規制・政策動向": { bg: "#FAECE7", color: "#C0392B" },
+  "学術研究": { bg: "#E1F5EE", color: "#1D8348" },
+  "業界動向・統計": { bg: "#E4EFF9", color: "#1F6FB2" },
   "その他": { bg: "#F1F3F5", color: "#5A6570" }
 };
 
