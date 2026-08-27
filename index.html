@@ -321,6 +321,21 @@
     background: #F1F3F5;
     color: #6B7580;
   }
+  .reason-toggle {
+    font-size: 11.5px;
+    color: var(--blue);
+    cursor: pointer;
+    user-select: none;
+  }
+  .reason-toggle:hover { text-decoration: underline; }
+  .reason-body {
+    font-size: 12px;
+    color: var(--gray-body);
+    background: var(--bg);
+    border-radius: 6px;
+    padding: 8px 10px;
+    line-height: 1.6;
+  }
   .card-actions {
     display: flex;
     justify-content: flex-end;
@@ -566,8 +581,12 @@
   </div>
   <div class="count-line-row">
     <span class="count-line" id="countLine"></span>
-    <span class="report-link" id="reportToggleBtn">📊 直近の週次レポートを見る →</span>
+    <div style="display:flex; gap:16px;">
+      <span class="report-link" id="criteriaToggleBtn">ℹ️ 判定基準について</span>
+      <span class="report-link" id="reportToggleBtn">📊 直近の週次レポートを見る →</span>
+    </div>
   </div>
+  <div class="add-news-form" id="criteriaPanel" style="display:none;"></div>
 </div>
 
 <div class="grid" id="cardGrid"></div>
@@ -584,7 +603,7 @@ const API_URL = "https://script.google.com/a/macros/arcs-inc.jp/s/AKfycbydHNsQDT
 
 const IMPORTANCE_MAP = { "高": "high", "中": "mid", "低": "low" };
 
-const FIELDS = ["すべて", "ART/生殖医療テクノロジー動向", "規制・政策動向", "学術研究", "業界動向・統計", "その他"];
+const FIELDS = ["すべて", "ART/生殖医療テクノロジー動向", "規制・政策動向", "学術研究", "業界動向・統計", "競合動向", "その他"];
 const DEPARTMENTS = ["すべて", "開発", "臨床開発", "品質保証", "薬事", "事業開発"];
 let REGIONS = ["すべて"];
 let MONTHS = ["すべて"];
@@ -678,6 +697,7 @@ function loadData() {
       registeredAt: item["登録日時"],
       region: normalizeRegion(item["国"]),
       departments: (item["部門"] || "").split(",").map(d => d.trim()).filter(Boolean),
+      reason: item["判定理由"] || "",
       status: item["ステータス"] || "",
       url: item["元URL"]
     }));
@@ -813,6 +833,7 @@ function render() {
             <option value="規制・政策動向" ${item.field === "規制・政策動向" ? "selected" : ""}>規制・政策動向</option>
             <option value="学術研究" ${item.field === "学術研究" ? "selected" : ""}>学術研究</option>
             <option value="業界動向・統計" ${item.field === "業界動向・統計" ? "selected" : ""}>業界動向・統計</option>
+            <option value="競合動向" ${item.field === "競合動向" ? "selected" : ""}>競合動向</option>
             <option value="その他" ${item.field === "その他" ? "selected" : ""}>その他</option>
           </select>
           <input type="text" class="edit-country-input" data-id="${item.id}" value="${escapeAttr(item.region)}" placeholder="国">
@@ -832,6 +853,10 @@ function render() {
         <span class="source-badge">${item.source}${item.poster ? " ・ " + item.poster : ""}</span>
         <span>${formatDisplayDate(item.date)}</span>
       </div>
+      ${item.reason ? `
+      <div class="reason-toggle" data-reason-id="${item.id}">🔍 重要度「${item.importanceLabel}」の判定理由を見る</div>
+      <div class="reason-body" data-reason-body-id="${item.id}" style="display:none;">${escapeAttr(item.reason)}</div>
+      ` : ""}
       <div class="card-actions">
         <button class="interest-btn ${feedbackState[item.id] === "interested" ? "active" : ""}"
           data-id="${item.id}" data-title="${escapeAttr(item.title)}" data-field="${escapeAttr(item.field)}" data-type="interested">
@@ -847,6 +872,13 @@ function render() {
 
   grid.querySelectorAll(".interest-btn").forEach(btn => {
     btn.addEventListener("click", () => onInterestClick(btn));
+  });
+
+  grid.querySelectorAll(".reason-toggle").forEach(toggle => {
+    toggle.addEventListener("click", () => {
+      const body = grid.querySelector(`.reason-body[data-reason-body-id="${toggle.dataset.reasonId}"]`);
+      body.style.display = body.style.display === "none" ? "block" : "none";
+    });
   });
 
   grid.querySelectorAll(".edit-toggle-btn").forEach(btn => {
@@ -966,6 +998,7 @@ const FIELD_COLORS = {
   "規制・政策動向": { bg: "#FAECE7", color: "#C0392B" },
   "学術研究": { bg: "#E1F5EE", color: "#1D8348" },
   "業界動向・統計": { bg: "#E4EFF9", color: "#1F6FB2" },
+  "競合動向": { bg: "#FDEEDC", color: "#B9660B" },
   "その他": { bg: "#F1F3F5", color: "#5A6570" }
 };
 
@@ -1031,6 +1064,35 @@ document.getElementById("newOnlyToggle").addEventListener("click", () => {
 document.getElementById("addNewsBtn").addEventListener("click", () => {
   const form = document.getElementById("addNewsForm");
   form.style.display = form.style.display === "none" ? "flex" : "none";
+});
+
+document.getElementById("criteriaToggleBtn").addEventListener("click", () => {
+  const panel = document.getElementById("criteriaPanel");
+  if (panel.style.display === "none") {
+    panel.innerHTML = `
+      <div style="font-size:13px; line-height:1.9; color:var(--gray-body);">
+        <strong style="color:var(--navy);">分野の分類</strong><br>
+        Web検索(自動収集)は、ART/生殖医療テクノロジー動向・規制政策動向・学術研究・業界動向統計・競合動向のいずれにも該当しない記事、および個人の体験談・芸能ニュースは「対象外」として登録しません。手動追加の記事は、社内メンバーの一次判断を尊重し「対象外」にはせず、必ずいずれかの分野(該当なしの場合は「その他」)に分類します。<br><br>
+        <strong style="color:var(--navy);">重要度の判定基準</strong><br>
+        ・<b>高</b>: 公式発表・臨床データ・法改正・規制当局の正式決定など一次情報であり、かつARCSの事業領域(生殖医療AI・SaMD・ICSI自動化)の意思決定に直接影響するもの<br>
+        ・<b>中</b>: 業界動向・研究発表・隣接領域の情報で、参考情報として有用だが即座の意思決定には直結しないもの<br>
+        ・<b>低</b>: 統計の微修正、単発の展示会情報、間接的にしか関連しない一般ニュースなど<br>
+        各記事には、この基準のどれに該当したかをAIが一言で記録しており、カード下部の「🔍判定理由を見る」から確認できます。<br><br>
+        <strong style="color:var(--navy);">部門タグの判定基準</strong><br>
+        ・開発(AI・医療機器開発): AI技術・アルゴリズム、ロボティクス・自動化技術、機器設計、技術実装事例<br>
+        ・臨床開発: 臨床試験・治験、臨床アウトカム、有効性・安全性データ<br>
+        ・品質保証: 品質マネジメントシステム、ISO規格、品質不具合、リスクマネジメント<br>
+        ・薬事: 規制当局動向、承認・認証プロセス、法改正、薬事区分<br>
+        ・事業開発: 市場規模、資金調達、企業提携・M&A、事業戦略<br><br>
+        <strong style="color:var(--navy);">競合動向の対象</strong><br>
+        Overture Life、Conceivable Life Sciences、BAIBYS、IVF2.0/SiD、VitruvianMD、NeoGenix Fertility、Fertilis、BetterFit、Optimaton.ai、SpOvum/RoboICSI、Fertsyなど、生殖医療AI・ICSI自動化領域の競合企業に関する記事を対象とします。<br><br>
+        <span style="font-size:11.5px; color:#9AA3AB;">※この基準はAIへの指示内容(プロンプト)をそのまま表示しています。実際の判定と乖離が見つかった場合は、随時見直します。</span>
+      </div>
+    `;
+    panel.style.display = "flex";
+  } else {
+    panel.style.display = "none";
+  }
 });
 
 document.getElementById("reportToggleBtn").addEventListener("click", () => {
