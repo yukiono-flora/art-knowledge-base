@@ -528,6 +528,137 @@
     cursor: pointer;
     font-size: 13px;
   }
+  .main-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 0 32px;
+    border-bottom: 1px solid var(--gray-line);
+    background: var(--white);
+  }
+  .main-tab {
+    padding: 12px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #9AA3AB;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    user-select: none;
+  }
+  .main-tab:hover { color: var(--navy); }
+  .main-tab.active {
+    color: var(--navy);
+    border-bottom-color: var(--blue);
+  }
+  .digest-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 32px;
+    display: none;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .digest-card {
+    background: var(--white);
+    border: 1px solid var(--gray-line);
+    border-radius: 10px;
+    padding: 22px 24px;
+  }
+  .digest-card-title {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 10px;
+  }
+  .digest-card-body {
+    font-size: 14px;
+    line-height: 1.9;
+    color: var(--gray-body);
+    white-space: pre-wrap;
+  }
+  .digest-card-meta {
+    font-size: 11.5px;
+    color: #9AA3AB;
+    margin-top: 14px;
+    border-top: 1px solid var(--gray-line);
+    padding-top: 10px;
+  }
+  .digest-empty {
+    font-size: 13px;
+    color: #9AA3AB;
+  }
+  .digest-memo-section {
+    border-top: 1px solid var(--gray-line);
+    margin-top: 16px;
+    padding-top: 14px;
+  }
+  .digest-memo-header {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-body);
+    margin-bottom: 10px;
+  }
+  .digest-memo-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .digest-memo-item {
+    background: var(--bg);
+    border-radius: 6px;
+    padding: 8px 10px;
+  }
+  .digest-memo-item-top {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 3px;
+  }
+  .digest-memo-author {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--navy);
+  }
+  .digest-memo-date {
+    font-size: 11px;
+    color: #9AA3AB;
+  }
+  .digest-memo-content {
+    font-size: 12.5px;
+    color: var(--gray-body);
+    line-height: 1.6;
+  }
+  .digest-memo-input-row {
+    display: flex;
+    gap: 6px;
+  }
+  .digest-memo-name-input {
+    width: 110px;
+    flex-shrink: 0;
+    padding: 7px 8px;
+    border: 1px solid var(--gray-line);
+    border-radius: 6px;
+    font-size: 12.5px;
+  }
+  .digest-memo-input {
+    flex: 1;
+    padding: 7px 10px;
+    border: 1px solid var(--gray-line);
+    border-radius: 6px;
+    font-size: 12.5px;
+  }
+  .digest-memo-submit-btn {
+    padding: 7px 16px;
+    border: none;
+    border-radius: 6px;
+    background: var(--blue);
+    color: var(--white);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .digest-memo-submit-btn:hover { background: var(--blue-dark); }
 </style>
 </head>
 <body>
@@ -538,6 +669,11 @@
     <div class="header-sub">ARCS Inc. / 内部参照用プロトタイプ</div>
   </div>
   <div style="width:1px;"></div>
+</div>
+
+<div class="main-tabs">
+  <span class="main-tab active" id="tabNews">📰 ニュース一覧</span>
+  <span class="main-tab" id="tabDigest">🧠 AIによる業界動向分析</span>
 </div>
 
 <div class="toolbar">
@@ -606,6 +742,8 @@
   データの取得に失敗しました。<br>
   <button class="retry-btn" id="retryBtn">再読み込み</button>
 </div>
+
+<div class="digest-container" id="digestContainer"></div>
 
 <script>
 // GAS Web App のURL(ARTナレッジベース スプレッドシート用API)
@@ -682,6 +820,8 @@ function updateMonthsFromData() {
 let DATA = [];
 let MEMOS = {};
 let REPORTS = []; // { "記事ID": [{author, content, date}, ...] }
+let FIELD_DIGESTS = {}; // { "分野名": {generatedAt, content, articleCount} }
+let FIELD_MEMOS = {}; // { "分野名": [{date, author, content}, ...] }
 
 // GAS Web AppはCORSに対応していないため、<script>タグを使うJSONP方式でデータを取得する
 function loadData() {
@@ -730,6 +870,8 @@ function loadData() {
 
     MEMOS = json.memos || {};
     REPORTS = json.reports || [];
+    FIELD_DIGESTS = json.fieldDigests || {};
+    FIELD_MEMOS = json.fieldMemos || {};
 
     updateRegionsFromData();
     updateMonthsFromData();
@@ -1107,6 +1249,116 @@ document.getElementById("addNewsBtn").addEventListener("click", () => {
   const form = document.getElementById("addNewsForm");
   form.style.display = form.style.display === "none" ? "flex" : "none";
 });
+
+const FIELD_ORDER = ["ART/生殖医療テクノロジー動向", "規制・政策動向", "学術研究", "業界動向・統計", "競合動向"];
+
+document.getElementById("tabNews").addEventListener("click", () => {
+  document.getElementById("tabNews").classList.add("active");
+  document.getElementById("tabDigest").classList.remove("active");
+  document.querySelector(".toolbar").style.display = "block";
+  document.getElementById("cardGrid").style.display = "grid";
+  document.getElementById("digestContainer").style.display = "none";
+});
+
+document.getElementById("tabDigest").addEventListener("click", () => {
+  document.getElementById("tabDigest").classList.add("active");
+  document.getElementById("tabNews").classList.remove("active");
+  document.querySelector(".toolbar").style.display = "none";
+  document.getElementById("cardGrid").style.display = "none";
+  document.getElementById("emptyState").style.display = "none";
+  document.getElementById("digestContainer").style.display = "flex";
+  renderDigestTab();
+});
+
+function renderDigestTab() {
+  const container = document.getElementById("digestContainer");
+  const hasAny = FIELD_ORDER.some(f => FIELD_DIGESTS[f]);
+
+  if (!hasAny) {
+    container.innerHTML = `<div class="digest-empty">まだレポートが生成されていません。Apps Scriptで generateFieldDigests を実行すると生成されます。</div>`;
+    return;
+  }
+
+  container.innerHTML = FIELD_ORDER.map(field => {
+    const memos = FIELD_MEMOS[field] || [];
+    const memoListHtml = memos.map(m => `
+      <div class="digest-memo-item">
+        <div class="digest-memo-item-top">
+          <span class="digest-memo-author">${escapeHtml(m.author)}</span>
+          <span class="digest-memo-date">${escapeHtml(m.date)}</span>
+        </div>
+        <div class="digest-memo-content">${escapeHtml(m.content)}</div>
+      </div>
+    `).join("");
+
+    const memoSectionHtml = `
+      <div class="digest-memo-section">
+        <div class="digest-memo-header">💬 メモ ${memos.length}件</div>
+        <div class="digest-memo-list">${memoListHtml}</div>
+        <div class="digest-memo-input-row">
+          <input type="text" class="digest-memo-name-input" placeholder="お名前(任意)" data-field="${escapeHtml(field)}" value="${escapeHtml(savedAuthorName)}">
+          <input type="text" class="digest-memo-input" placeholder="気づいたことをメモ..." data-field="${escapeHtml(field)}">
+          <button class="digest-memo-submit-btn" data-field="${escapeHtml(field)}">投稿</button>
+        </div>
+      </div>
+    `;
+
+    const d = FIELD_DIGESTS[field];
+    if (!d) return `
+      <div class="digest-card">
+        <div class="digest-card-title">${field}</div>
+        <div class="digest-empty">この分野はまだレポートが生成されていません。</div>
+        ${memoSectionHtml}
+      </div>
+    `;
+    return `
+      <div class="digest-card">
+        <div class="digest-card-title">${field}</div>
+        <div class="digest-card-body">${escapeHtml(d.content)}</div>
+        <div class="digest-card-meta">対象記事数: ${d.articleCount}件 ・ 生成日時: ${escapeHtml(d.generatedAt)}</div>
+        ${memoSectionHtml}
+      </div>
+    `;
+  }).join("");
+
+  container.querySelectorAll(".digest-memo-submit-btn").forEach(btn => {
+    btn.addEventListener("click", () => onDigestMemoSubmit(btn));
+  });
+  container.querySelectorAll(".digest-memo-input").forEach(input => {
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        const btn = container.querySelector(`.digest-memo-submit-btn[data-field="${input.dataset.field}"]`);
+        onDigestMemoSubmit(btn);
+      }
+    });
+  });
+}
+
+function onDigestMemoSubmit(btn) {
+  const field = btn.dataset.field;
+  const nameInput = document.querySelector(`.digest-memo-name-input[data-field="${field}"]`);
+  const contentInput = document.querySelector(`.digest-memo-input[data-field="${field}"]`);
+  const content = contentInput.value.trim();
+  if (!content) return;
+
+  const rawName = nameInput.value.trim();
+  const author = rawName || "匿名";
+  localStorage.setItem("artKbAuthorName", rawName);
+  savedAuthorName = rawName;
+
+  if (!FIELD_MEMOS[field]) FIELD_MEMOS[field] = [];
+  FIELD_MEMOS[field].push({ author, content, date: "たった今" });
+  contentInput.value = "";
+  renderDigestTab();
+
+  fetch(API_URL, {
+    method: "POST",
+    mode: "no-cors",
+    credentials: "include",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({ action: "addFieldMemo", field: field, author: author, content: content })
+  }).catch(err => console.error("分野メモ送信エラー:", err));
+}
 
 document.getElementById("opinionToggleBtn").addEventListener("click", () => {
   const form = document.getElementById("opinionForm");
