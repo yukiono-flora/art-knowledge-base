@@ -617,7 +617,7 @@ const FIELDS = ["すべて", "ART/生殖医療テクノロジー動向", "規制
 const DEPARTMENTS = ["すべて", "開発", "臨床開発", "品質保証", "薬事", "事業開発"];
 const IMPORTANCE_LEVELS = ["すべて", "高", "中", "低"];
 let REGIONS = ["すべて"];
-let MONTHS = ["すべて"];
+// (MONTHSは updateMonthsFromData 内で CURRENT_YEAR_MONTHS / OLDER_MONTHS に分割管理)
 let activeField = "すべて";
 let activeDepartment = "すべて";
 let activeImportance = "すべて";
@@ -656,17 +656,28 @@ function itemMonthLabel(dateStr) {
   return `${d.getFullYear()}年${d.getMonth() + 1}月`;
 }
 
+let CURRENT_YEAR_MONTHS = ["すべて"];
+let OLDER_MONTHS = [];
+let showOlderMonths = false;
+
 function updateMonthsFromData() {
   const uniqueMonths = [...new Set(DATA.map(item => itemMonthLabel(item.date)).filter(Boolean))];
+  const parse = (s) => {
+    const m = s.match(/(\d+)年(\d+)月/);
+    return m ? { year: parseInt(m[1]), month: parseInt(m[2]) } : { year: 0, month: 0 };
+  };
   // 新しい月が先頭に来るように、実際の年月値で降順ソート
   uniqueMonths.sort((a, b) => {
-    const parse = (s) => {
-      const m = s.match(/(\d+)年(\d+)月/);
-      return m ? parseInt(m[1]) * 100 + parseInt(m[2]) : 0;
-    };
-    return parse(b) - parse(a);
+    const pa = parse(a), pb = parse(b);
+    return (pb.year * 100 + pb.month) - (pa.year * 100 + pa.month);
   });
-  MONTHS = ["すべて", ...uniqueMonths];
+
+  const thisYear = new Date().getFullYear();
+  const currentYear = uniqueMonths.filter(m => parse(m).year === thisYear);
+  const older = uniqueMonths.filter(m => parse(m).year !== thisYear);
+
+  CURRENT_YEAR_MONTHS = ["すべて", ...currentYear];
+  OLDER_MONTHS = older;
 }
 let DATA = [];
 let MEMOS = {};
@@ -794,15 +805,28 @@ function renderChips() {
   });
 
   const monthEl = document.getElementById("monthChips");
-  monthEl.innerHTML = MONTHS.map(m =>
+  const monthsToShow = showOlderMonths ? [...CURRENT_YEAR_MONTHS, ...OLDER_MONTHS] : CURRENT_YEAR_MONTHS;
+  let monthHtml = monthsToShow.map(m =>
     `<div class="region-chip ${m === activeMonth ? "active" : ""}" data-month="${m}">${m}</div>`
   ).join("");
-  monthEl.querySelectorAll(".region-chip").forEach(chip => {
+  if (OLDER_MONTHS.length > 0) {
+    monthHtml += `<div class="region-chip" id="olderMonthsToggle">${showOlderMonths ? "過去の月を隠す ▲" : `過去の月を見る(${OLDER_MONTHS.length}) ▼`}</div>`;
+  }
+  monthEl.innerHTML = monthHtml;
+
+  monthEl.querySelectorAll(".region-chip[data-month]").forEach(chip => {
     chip.addEventListener("click", () => {
       activeMonth = chip.dataset.month;
       render();
     });
   });
+  const olderToggle = document.getElementById("olderMonthsToggle");
+  if (olderToggle) {
+    olderToggle.addEventListener("click", () => {
+      showOlderMonths = !showOlderMonths;
+      render();
+    });
+  }
 }
 
 function render() {
