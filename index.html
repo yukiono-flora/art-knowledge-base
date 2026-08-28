@@ -674,6 +674,7 @@
 <div class="main-tabs">
   <span class="main-tab active" id="tabNews">📰 ニュース一覧</span>
   <span class="main-tab" id="tabDigest">🧠 AIによる業界動向分析</span>
+  <span class="main-tab" id="tabAcademic">🔬 学術研究(PubMed)</span>
 </div>
 
 <div class="toolbar">
@@ -744,6 +745,7 @@
 </div>
 
 <div class="digest-container" id="digestContainer"></div>
+<div class="grid" id="academicGrid" style="display:none;"></div>
 
 <script>
 // GAS Web App のURL(ARTナレッジベース スプレッドシート用API)
@@ -822,6 +824,7 @@ let MEMOS = {};
 let REPORTS = []; // { "記事ID": [{author, content, date}, ...] }
 let FIELD_DIGESTS = {}; // { "分野名": {generatedAt, content, articleCount} }
 let FIELD_MEMOS = {}; // { "分野名": [{date, author, content}, ...] }
+let PAPERS = []; // PubMedから収集した論文一覧
 
 // GAS Web AppはCORSに対応していないため、<script>タグを使うJSONP方式でデータを取得する
 function loadData() {
@@ -872,6 +875,7 @@ function loadData() {
     REPORTS = json.reports || [];
     FIELD_DIGESTS = json.fieldDigests || {};
     FIELD_MEMOS = json.fieldMemos || {};
+    PAPERS = json.papers || [];
 
     updateRegionsFromData();
     updateMonthsFromData();
@@ -1252,23 +1256,64 @@ document.getElementById("addNewsBtn").addEventListener("click", () => {
 
 const FIELD_ORDER = ["ART/生殖医療テクノロジー動向", "規制・政策動向", "学術研究", "業界動向・統計", "競合動向"];
 
-document.getElementById("tabNews").addEventListener("click", () => {
-  document.getElementById("tabNews").classList.add("active");
-  document.getElementById("tabDigest").classList.remove("active");
-  document.querySelector(".toolbar").style.display = "block";
-  document.getElementById("cardGrid").style.display = "grid";
-  document.getElementById("digestContainer").style.display = "none";
-});
+function switchMainTab(activeId) {
+  ["tabNews", "tabDigest", "tabAcademic"].forEach(id => {
+    document.getElementById(id).classList.toggle("active", id === activeId);
+  });
+  document.querySelector(".toolbar").style.display = activeId === "tabNews" ? "block" : "none";
+  document.getElementById("cardGrid").style.display = activeId === "tabNews" ? "grid" : "none";
+  document.getElementById("emptyState").style.display = "none";
+  document.getElementById("digestContainer").style.display = activeId === "tabDigest" ? "flex" : "none";
+  document.getElementById("academicGrid").style.display = activeId === "tabAcademic" ? "grid" : "none";
+}
+
+document.getElementById("tabNews").addEventListener("click", () => switchMainTab("tabNews"));
 
 document.getElementById("tabDigest").addEventListener("click", () => {
-  document.getElementById("tabDigest").classList.add("active");
-  document.getElementById("tabNews").classList.remove("active");
-  document.querySelector(".toolbar").style.display = "none";
-  document.getElementById("cardGrid").style.display = "none";
-  document.getElementById("emptyState").style.display = "none";
-  document.getElementById("digestContainer").style.display = "flex";
+  switchMainTab("tabDigest");
   renderDigestTab();
 });
+
+document.getElementById("tabAcademic").addEventListener("click", () => {
+  switchMainTab("tabAcademic");
+  renderAcademicTab();
+});
+
+function renderAcademicTab() {
+  const grid = document.getElementById("academicGrid");
+  if (PAPERS.length === 0) {
+    grid.innerHTML = `<div class="digest-empty">まだ論文が収集されていません。Apps Scriptで collectAcademicPapers を実行すると収集されます。</div>`;
+    return;
+  }
+
+  const sorted = [...PAPERS].sort((a, b) => new Date(b["公開日"]) - new Date(a["公開日"]));
+
+  grid.innerHTML = sorted.map(p => `
+    <div class="card">
+      <div class="card-top">
+        <span class="field-tag" style="border-left-color:#6D4AA8;color:#6D4AA8;">学術研究</span>
+        <span class="edit-toggle-btn" title="PMID: ${escapeHtml(p["PMID"])}">🔬</span>
+      </div>
+      <div class="card-top-row2">
+        <div class="hashtag-row">
+          ${(p["部門"] || "").split(",").map(d => d.trim()).filter(Boolean).map(d => `<span class="region-tag">${escapeHtml(d)}</span>`).join("")}
+          ${p["国"] ? `<span class="region-tag">${escapeHtml(p["国"])}</span>` : ""}
+        </div>
+      </div>
+      <div class="card-title"><a href="${escapeHtml(p["元URL"])}" target="_blank" rel="noopener">${escapeHtml(p["タイトル"])}</a></div>
+      <div class="card-summary">${escapeHtml(p["要約"])}</div>
+      <div class="meta-row">
+        <span class="importance-badge importance-${IMPORTANCE_MAP[p["重要度"]] || "mid"}">重要度: ${escapeHtml(p["重要度"] || "中")}</span>
+        <span style="font-size:11.5px;color:#9AA3AB;">${escapeHtml(p["ジャーナル"] || "")}</span>
+      </div>
+      ${p["判定理由"] ? `<div class="reason-body" style="display:block;">${escapeHtml(p["判定理由"])}</div>` : ""}
+      <div class="meta-row">
+        <span class="source-badge">PubMed</span>
+        <span style="font-size:11.5px;color:#9AA3AB;">${formatDisplayDate(p["公開日"])}</span>
+      </div>
+    </div>
+  `).join("");
+}
 
 function renderDigestTab() {
   const container = document.getElementById("digestContainer");
