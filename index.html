@@ -677,7 +677,7 @@
   <span class="main-tab" id="tabAcademic">🔬 学術研究(PubMed)</span>
 </div>
 
-<div class="toolbar">
+<div class="toolbar" id="newsToolbar">
   <div class="search-row">
     <input class="search-input" id="searchInput" type="text" placeholder="キーワードで検索(タイトル・要約)">
     <button class="add-news-btn" id="addNewsBtn">+ ニュースを追加</button>
@@ -745,6 +745,30 @@
 </div>
 
 <div class="digest-container" id="digestContainer"></div>
+<div class="toolbar" id="academicToolbar" style="display:none;">
+  <div class="search-row">
+    <input class="search-input" id="academicSearchInput" type="text" placeholder="キーワードで検索(タイトル・要約)">
+  </div>
+  <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+    <span style="font-size:12px; color:#8A95A0; flex-shrink:0;">テーマ:</span>
+    <div class="chip-row" id="academicThemeChips" style="margin-bottom:0;"></div>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+    <span style="font-size:12px; color:#8A95A0; flex-shrink:0;">重要度:</span>
+    <div class="chip-row" id="academicImportanceChips" style="margin-bottom:0;"></div>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+    <span style="font-size:12px; color:#8A95A0; flex-shrink:0;">国:</span>
+    <div class="chip-row" id="academicRegionChips" style="margin-bottom:0;"></div>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+    <span style="font-size:12px; color:#8A95A0; flex-shrink:0;">月:</span>
+    <div class="chip-row" id="academicMonthChips" style="margin-bottom:0;"></div>
+  </div>
+  <div class="count-line-row">
+    <span class="count-line" id="academicCountLine"></span>
+  </div>
+</div>
 <div class="grid" id="academicGrid" style="display:none;"></div>
 
 <script>
@@ -825,6 +849,11 @@ let REPORTS = []; // { "記事ID": [{author, content, date}, ...] }
 let FIELD_DIGESTS = {}; // { "分野名": {generatedAt, content, articleCount} }
 let FIELD_MEMOS = {}; // { "分野名": [{date, author, content}, ...] }
 let PAPERS = []; // PubMedから収集した論文一覧
+let academicQuery = "";
+let academicActiveTheme = "すべて";
+let academicActiveImportance = "すべて";
+let academicActiveRegion = "すべて";
+let academicActiveMonth = "すべて";
 
 // GAS Web AppはCORSに対応していないため、<script>タグを使うJSONP方式でデータを取得する
 function loadData() {
@@ -1260,10 +1289,11 @@ function switchMainTab(activeId) {
   ["tabNews", "tabDigest", "tabAcademic"].forEach(id => {
     document.getElementById(id).classList.toggle("active", id === activeId);
   });
-  document.querySelector(".toolbar").style.display = activeId === "tabNews" ? "block" : "none";
+  document.getElementById("newsToolbar").style.display = activeId === "tabNews" ? "block" : "none";
   document.getElementById("cardGrid").style.display = activeId === "tabNews" ? "grid" : "none";
   document.getElementById("emptyState").style.display = "none";
   document.getElementById("digestContainer").style.display = activeId === "tabDigest" ? "flex" : "none";
+  document.getElementById("academicToolbar").style.display = activeId === "tabAcademic" ? "block" : "none";
   document.getElementById("academicGrid").style.display = activeId === "tabAcademic" ? "grid" : "none";
 }
 
@@ -1279,14 +1309,87 @@ document.getElementById("tabAcademic").addEventListener("click", () => {
   renderAcademicTab();
 });
 
+function academicPaperMonthLabel(dateStr) {
+  const d = new Date(dateStr);
+  if (isNaN(d)) return null;
+  return `${d.getFullYear()}年${d.getMonth() + 1}月`;
+}
+
+function renderAcademicChips() {
+  const uniqueThemes = [...new Set(PAPERS.map(p => p["テーマ"]).filter(Boolean))];
+  const themeOptions = ["すべて", ...uniqueThemes];
+  const themeEl = document.getElementById("academicThemeChips");
+  themeEl.innerHTML = themeOptions.map(t =>
+    `<div class="region-chip ${t === academicActiveTheme ? "active" : ""}" data-theme="${escapeHtml(t)}">${escapeHtml(t)}</div>`
+  ).join("");
+  themeEl.querySelectorAll(".region-chip").forEach(chip => {
+    chip.addEventListener("click", () => { academicActiveTheme = chip.dataset.theme; renderAcademicTab(); });
+  });
+
+  const impEl = document.getElementById("academicImportanceChips");
+  impEl.innerHTML = IMPORTANCE_LEVELS.map(i =>
+    `<div class="region-chip ${i === academicActiveImportance ? "active" : ""}" data-importance="${i}">${i}</div>`
+  ).join("");
+  impEl.querySelectorAll(".region-chip").forEach(chip => {
+    chip.addEventListener("click", () => { academicActiveImportance = chip.dataset.importance; renderAcademicTab(); });
+  });
+
+  const uniqueRegions = [...new Set(PAPERS.map(p => normalizeRegion(p["国"])).filter(Boolean))];
+  uniqueRegions.sort((a, b) => a.localeCompare(b, "ja"));
+  const regionOptions = ["すべて", ...uniqueRegions];
+  const regionEl = document.getElementById("academicRegionChips");
+  regionEl.innerHTML = regionOptions.map(r =>
+    `<div class="region-chip ${r === academicActiveRegion ? "active" : ""}" data-region="${r}">${r}</div>`
+  ).join("");
+  regionEl.querySelectorAll(".region-chip").forEach(chip => {
+    chip.addEventListener("click", () => { academicActiveRegion = chip.dataset.region; renderAcademicTab(); });
+  });
+
+  const uniqueMonths = [...new Set(PAPERS.map(p => academicPaperMonthLabel(p["公開日"])).filter(Boolean))];
+  uniqueMonths.sort((a, b) => {
+    const parse = (s) => { const m = s.match(/(\d+)年(\d+)月/); return m ? parseInt(m[1]) * 100 + parseInt(m[2]) : 0; };
+    return parse(b) - parse(a);
+  });
+  const monthOptions = ["すべて", ...uniqueMonths];
+  const monthEl = document.getElementById("academicMonthChips");
+  monthEl.innerHTML = monthOptions.map(m =>
+    `<div class="region-chip ${m === academicActiveMonth ? "active" : ""}" data-month="${m}">${m}</div>`
+  ).join("");
+  monthEl.querySelectorAll(".region-chip").forEach(chip => {
+    chip.addEventListener("click", () => { academicActiveMonth = chip.dataset.month; renderAcademicTab(); });
+  });
+}
+
 function renderAcademicTab() {
+  renderAcademicChips();
   const grid = document.getElementById("academicGrid");
+
   if (PAPERS.length === 0) {
     grid.innerHTML = `<div class="digest-empty">まだ論文が収集されていません。Apps Scriptで collectAcademicPapers を実行すると収集されます。</div>`;
+    document.getElementById("academicCountLine").textContent = "";
     return;
   }
 
-  const sorted = [...PAPERS].sort((a, b) => new Date(b["公開日"]) - new Date(a["公開日"]));
+  const q = academicQuery.trim().toLowerCase();
+  const filtered = PAPERS.filter(p => {
+    const matchesTheme = academicActiveTheme === "すべて" || p["テーマ"] === academicActiveTheme;
+    const matchesImportance = academicActiveImportance === "すべて" || p["重要度"] === academicActiveImportance;
+    const matchesRegion = academicActiveRegion === "すべて" || normalizeRegion(p["国"]) === academicActiveRegion;
+    const matchesMonth = academicActiveMonth === "すべて" || academicPaperMonthLabel(p["公開日"]) === academicActiveMonth;
+    const title = (p["タイトル"] || "").toLowerCase();
+    const summary = (p["要約"] || "").toLowerCase();
+    const matchesQuery = !q || title.includes(q) || summary.includes(q);
+    return matchesTheme && matchesImportance && matchesRegion && matchesMonth && matchesQuery;
+  });
+
+  document.getElementById("academicCountLine").textContent = `${filtered.length}件表示中(全${PAPERS.length}件)`;
+
+  if (filtered.length === 0) {
+    grid.innerHTML = `<div class="digest-empty">該当する論文がありません。検索条件を変えてみてください。</div>`;
+    return;
+  }
+
+  const sorted = [...filtered].sort((a, b) => new Date(b["公開日"]) - new Date(a["公開日"]));
 
   grid.innerHTML = sorted.map(p => `
     <div class="card">
@@ -1296,7 +1399,7 @@ function renderAcademicTab() {
       </div>
       <div class="card-top-row2">
         <div class="hashtag-row">
-          ${(p["部門"] || "").split(",").map(d => d.trim()).filter(Boolean).map(d => `<span class="region-tag">${escapeHtml(d)}</span>`).join("")}
+          ${p["テーマ"] ? `<span class="region-tag">${escapeHtml(p["テーマ"])}</span>` : ""}
           ${p["国"] ? `<span class="region-tag">${escapeHtml(p["国"])}</span>` : ""}
         </div>
       </div>
@@ -1314,6 +1417,11 @@ function renderAcademicTab() {
     </div>
   `).join("");
 }
+
+document.getElementById("academicSearchInput").addEventListener("input", (e) => {
+  academicQuery = e.target.value;
+  renderAcademicTab();
+});
 
 function renderDigestTab() {
   const container = document.getElementById("digestContainer");
