@@ -587,6 +587,49 @@
     font-size: 13px;
     color: #9AA3AB;
   }
+  .month-summary-panel {
+    background: var(--white);
+    border: 1px solid var(--gray-line);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-top: 4px;
+  }
+  .month-summary-stats {
+    display: flex;
+    gap: 28px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .month-summary-stat-item {
+    font-size: 13px;
+    color: var(--gray-body);
+  }
+  .month-summary-stat-item b {
+    font-size: 16px;
+    color: var(--navy);
+  }
+  .month-summary-gen-btn {
+    padding: 7px 16px;
+    border: 1px solid var(--blue);
+    border-radius: 7px;
+    background: var(--white);
+    color: var(--blue);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .month-summary-gen-btn:hover { background: var(--blue-soft); }
+  .month-summary-text {
+    font-size: 13.5px;
+    line-height: 1.8;
+    color: var(--gray-body);
+    white-space: pre-wrap;
+  }
+  .month-summary-note {
+    font-size: 11px;
+    color: #9AA3AB;
+    margin-top: 8px;
+  }
   .digest-memo-section {
     border-top: 1px solid var(--gray-line);
     margin-top: 16px;
@@ -717,6 +760,7 @@
     <span style="font-size:12px; color:#8A95A0; flex-shrink:0;">月:</span>
     <div class="chip-row" id="monthChips" style="margin-bottom:0;"></div>
   </div>
+  <div class="month-summary-panel" id="monthSummaryPanel" style="display:none;"></div>
   <div class="count-line-row">
     <span class="count-line" id="countLine"></span>
     <div style="display:flex; gap:16px;">
@@ -765,6 +809,7 @@
     <span style="font-size:12px; color:#8A95A0; flex-shrink:0;">月:</span>
     <div class="chip-row" id="academicMonthChips" style="margin-bottom:0;"></div>
   </div>
+  <div class="month-summary-panel" id="academicMonthSummaryPanel" style="display:none;"></div>
   <div class="count-line-row">
     <span class="count-line" id="academicCountLine"></span>
   </div>
@@ -993,6 +1038,7 @@ function renderChips() {
     chip.addEventListener("click", () => {
       activeMonth = chip.dataset.month;
       render();
+      updateMonthSummaryPanel("news", activeMonth, "monthSummaryPanel");
     });
   });
   const olderToggle = document.getElementById("olderMonthsToggle");
@@ -1356,7 +1402,94 @@ function renderAcademicChips() {
     `<div class="region-chip ${m === academicActiveMonth ? "active" : ""}" data-month="${m}">${m}</div>`
   ).join("");
   monthEl.querySelectorAll(".region-chip").forEach(chip => {
-    chip.addEventListener("click", () => { academicActiveMonth = chip.dataset.month; renderAcademicTab(); });
+    chip.addEventListener("click", () => {
+      academicActiveMonth = chip.dataset.month;
+      renderAcademicTab();
+      updateMonthSummaryPanel("academic", academicActiveMonth, "academicMonthSummaryPanel");
+    });
+  });
+}
+
+/**
+ * 月チップをクリックした際に、統計を即時表示し、AI要約生成ボタンを設置する
+ * scope: "news" または "academic"
+ */
+function updateMonthSummaryPanel(scope, month, panelId) {
+  const panel = document.getElementById(panelId);
+  if (month === "すべて") {
+    panel.style.display = "none";
+    return;
+  }
+
+  const source = scope === "academic" ? PAPERS : DATA;
+  const getMonthLabel = scope === "academic"
+    ? (p) => academicPaperMonthLabel(p["公開日"])
+    : (item) => itemMonthLabel(item.date);
+  const monthItems = source.filter(x => getMonthLabel(x) === month);
+
+  const counts = { "高": 0, "中": 0, "低": 0 };
+  monthItems.forEach(x => {
+    const imp = scope === "academic" ? x["重要度"] : x.importanceLabel;
+    if (counts[imp] !== undefined) counts[imp]++;
+  });
+
+  panel.style.display = "block";
+  panel.innerHTML = `
+    <div class="month-summary-stats">
+      <div class="month-summary-stat-item"><b>${monthItems.length}件</b><br>総件数</div>
+      <div class="month-summary-stat-item"><b style="color:#C0392B;">${counts["高"]}</b> / <b style="color:#B9660B;">${counts["中"]}</b> / <b>${counts["低"]}</b><br>重要度 高/中/低</div>
+    </div>
+    <div id="${panelId}_body"></div>
+  `;
+
+  renderMonthSummaryBody(scope, month, panelId);
+}
+
+function renderMonthSummaryBody(scope, month, panelId) {
+  const body = document.getElementById(`${panelId}_body`);
+  if (!body) return;
+
+  body.innerHTML = `<button class="month-summary-gen-btn" id="${panelId}_genBtn">🧠 AIで要約を生成</button>`;
+
+  document.getElementById(`${panelId}_genBtn`).addEventListener("click", (e) => {
+    const btn = e.target;
+    btn.disabled = true;
+    btn.textContent = "生成中...(数十秒かかる場合があります)";
+
+    const callbackName = "monthSummaryCallback_" + Date.now();
+    const timeoutId = setTimeout(() => {
+      if (window[callbackName]) {
+        delete window[callbackName];
+        btn.disabled = false;
+        btn.textContent = "🧠 AIで要約を生成";
+        body.innerHTML += `<div class="month-summary-note">応答がありませんでした。時間をおいて再度お試しください。</div>`;
+      }
+    }, 30000);
+
+    window[callbackName] = function (result) {
+      clearTimeout(timeoutId);
+      delete window[callbackName];
+
+      if (result.status === "ok") {
+        body.innerHTML = `
+          <div class="month-summary-text">${escapeHtml(result.content)}</div>
+          <div class="month-summary-note">${result.cached ? "(保存済みの要約を表示)" : "(今回新しく生成しました)"} 対象${result.articleCount}件 ・ 生成日時: ${escapeHtml(result.generatedAt)}</div>
+        `;
+      } else {
+        body.innerHTML = `<div class="month-summary-note">要約の生成に失敗しました(${escapeHtml(result.reason || "")})。しばらくしてから再度お試しください。</div>`;
+      }
+    };
+
+    const script = document.createElement("script");
+    script.src = API_URL + "?action=generateMonthSummary&scope=" + encodeURIComponent(scope)
+      + "&month=" + encodeURIComponent(month) + "&callback=" + callbackName;
+    script.onerror = () => {
+      clearTimeout(timeoutId);
+      delete window[callbackName];
+      btn.disabled = false;
+      btn.textContent = "🧠 AIで要約を生成";
+    };
+    document.body.appendChild(script);
   });
 }
 
