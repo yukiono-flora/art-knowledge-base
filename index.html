@@ -1454,7 +1454,7 @@ function fetchMonthSummary(scope, month, checkOnly, onResult) {
       delete window[callbackName];
       onResult({ status: "error", reason: "timeout" });
     }
-  }, 30000);
+  }, 60000);
 
   window[callbackName] = function (result) {
     clearTimeout(timeoutId);
@@ -1506,7 +1506,7 @@ function renderMonthSummaryBody(scope, month, panelId) {
     document.getElementById(`${panelId}_genBtn`).addEventListener("click", (e) => {
       const btn = e.target;
       btn.disabled = true;
-      btn.textContent = "生成中...(数十秒かかる場合があります)";
+      btn.textContent = "生成中...(件数が多い月は最大1分ほどかかります)";
 
       fetchMonthSummary(scope, month, false, (genResult) => {
         if (genResult.status === "ok") {
