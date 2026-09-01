@@ -1,5 +1,1873 @@
 <!DOCTYPE html>
+<html lang="ja"><!DOCTYPE html>
 <html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARTナレッジベース</title>
+<style>
+  :root {
+    --navy: #1F3A52;
+    --blue: #365D81;
+    --blue-soft: #E8EEF3;
+    --gray-body: #55606B;
+    --gray-line: #DDE3E8;
+    --bg: #FAFBFC;
+    --white: #FFFFFF;
+    --red: #B23A3A;
+    --amber: #C08A2E;
+    --green: #3D7A54;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Yu Gothic UI", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+    color: #33393F;
+    font-size: 15.5px;
+    line-height: 1.8;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Header */
+  .header {
+    background: var(--white);
+    border-bottom: 1px solid var(--gray-line);
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .header-left { display: flex; align-items: baseline; gap: 12px; }
+  .header-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--navy);
+    letter-spacing: 0.02em;
+  }
+  .header-sub {
+    font-size: 12px;
+    color: #8A95A0;
+  }
+  .badge-confidential {
+    border: 1px solid var(--red);
+    color: var(--red);
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+  }
+
+  /* Toolbar */
+  .toolbar {
+    padding: 20px 32px 0;
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+  .search-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .search-input {
+    flex: 1;
+    padding: 11px 16px;
+    border: 1px solid var(--gray-line);
+    border-radius: 8px;
+    font-size: 14px;
+    background: var(--white);
+    color: var(--navy);
+  }
+  .search-input:focus {
+    outline: none;
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px var(--blue-soft);
+  }
+  .new-only-toggle {
+    padding: 6px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--gray-line);
+    background: var(--white);
+    color: #9AA3AB;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.15s ease;
+  }
+  .new-only-toggle.active {
+    background: #0F6E56;
+    border-color: #0F6E56;
+    color: var(--white);
+  }
+  .add-news-btn {
+    padding: 9px 18px;
+    border: none;
+    background: var(--blue);
+    color: var(--white);
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .add-news-btn:hover { background: var(--blue-dark); }
+  .add-news-callout {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border: 1px dashed #B7C0C7;
+    border-radius: 10px;
+    padding: 10px 16px;
+    margin-top: 4px;
+    margin-bottom: 16px;
+    width: fit-content;
+  }
+  .add-news-callout-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .add-news-callout-icon {
+    font-size: 22px;
+  }
+  .add-news-callout-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--navy);
+  }
+  .add-news-callout-sub {
+    font-size: 11px;
+    color: #8A95A0;
+  }
+  .add-news-form {
+    background: var(--white);
+    border: 1px solid var(--gray-line);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .form-row {
+    display: flex;
+    gap: 8px;
+  }
+  .form-row input, .form-row select, .add-news-form textarea {
+    flex: 1;
+    padding: 9px 12px;
+    border: 1px solid var(--gray-line);
+    border-radius: 7px;
+    font-size: 13.5px;
+    font-family: inherit;
+  }
+  .add-news-submit-btn {
+    padding: 9px 20px;
+    border: none;
+    background: var(--navy);
+    color: var(--white);
+    border-radius: 7px;
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .form-note {
+    font-size: 12px;
+    color: var(--blue);
+    min-height: 16px;
+  }
+  .chip-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+  .chip {
+    padding: 6px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--gray-line);
+    background: var(--white);
+    font-size: 13px;
+    color: var(--gray-body);
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.15s ease;
+  }
+  .chip:hover { border-color: var(--blue); }
+  .chip.active {
+    background: var(--blue);
+    border-color: var(--blue);
+    color: var(--white);
+  }
+  .region-chip {
+    padding: 4px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--gray-line);
+    background: var(--white);
+    font-size: 12px;
+    color: #9AA3AB;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.15s ease;
+  }
+  .region-chip:hover { border-color: #B8C0C7; color: #6B7580; }
+  .region-chip.active {
+    background: #F1F3F5;
+    border-color: #C7CDD3;
+    color: #4A5158;
+    font-weight: 600;
+  }
+  .count-line-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 14px 2px 4px;
+  }
+  .count-line {
+    font-size: 12px;
+    color: #8A95A0;
+  }
+  .report-link {
+    font-size: 12px;
+    color: var(--blue);
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .report-link:hover { text-decoration: underline; }
+
+  /* Cards */
+  .grid {
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 0 32px 60px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 16px;
+  }
+  .card {
+    background: var(--white);
+    border: 1px solid var(--gray-line);
+    border-radius: 10px;
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .field-tag {
+    font-size: 13px;
+    font-weight: 700;
+    padding: 3px 0 3px 10px;
+    border-left: 4px solid;
+    white-space: nowrap;
+    line-height: 1.3;
+    background: none;
+  }
+  .region-tag {
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    color: #6B7580;
+  }
+  .region-tag::before {
+    content: "#";
+    color: #B7BEC4;
+  }
+  .pending-tag {
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: #FAEEDA;
+    color: #633806;
+  }
+  .new-badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    background: var(--red);
+    padding: 4px 12px 4px 16px;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+    clip-path: polygon(0 50%, 10px 0, 100% 0, 100% 100%, 10px 100%);
+  }
+  .card-top-right {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .card-top-row2 {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .hashtag-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .card-title {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--navy);
+    line-height: 1.5;
+  }
+  .card-title a { color: inherit; text-decoration: none; }
+  .card-title a:hover { text-decoration: underline; }
+
+  .card-summary {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 13px;
+    line-height: 1.75;
+    color: var(--gray-body);
+  }
+
+  .meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    border-top: 1px solid var(--gray-line);
+    padding-top: 10px;
+    margin-top: 2px;
+  }
+  .meta-row-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .source-badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 5px;
+    background: #F1F3F5;
+    color: #6B7580;
+  }
+  .importance-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 5px;
+  }
+  .importance-badge.importance-high { background: #FAECE7; color: #C0392B; }
+  .importance-badge.importance-mid { background: #FDEEDC; color: #B9660B; }
+  .importance-badge.importance-low { background: #F1F3F5; color: #6B7580; }
+  .reason-toggle {
+    font-size: 11.5px;
+    color: var(--blue);
+    cursor: pointer;
+    user-select: none;
+  }
+  .reason-toggle:hover { text-decoration: underline; }
+  .reason-body {
+    font-size: 12px;
+    color: var(--gray-body);
+    background: var(--bg);
+    border-radius: 6px;
+    padding: 8px 10px;
+    line-height: 1.6;
+  }
+  .flag-btn {
+    padding: 3px 10px;
+    border: 1px solid var(--gray-line);
+    border-radius: 5px;
+    background: var(--white);
+    color: #8A95A0;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .flag-btn:hover { border-color: #C0392B; color: #C0392B; }
+  .flag-btn.active {
+    border-color: #C0392B;
+    background: #FAECE7;
+    color: #C0392B;
+  }
+  .memo-section {
+    border-top: 1px solid var(--gray-line);
+    padding-top: 12px;
+    margin-top: 2px;
+  }
+  .memo-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-body);
+    margin-bottom: 8px;
+    cursor: pointer;
+  }
+  .memo-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .memo-item {
+    background: var(--bg);
+    border-radius: 6px;
+    padding: 7px 10px;
+  }
+  .memo-item-top {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2px;
+  }
+  .memo-author {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--navy);
+  }
+  .memo-date {
+    font-size: 11px;
+    color: #9AA3AB;
+  }
+  .memo-content {
+    font-size: 12.5px;
+    color: var(--gray-body);
+    line-height: 1.6;
+  }
+  .memo-input-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .memo-input-top-row {
+    display: flex;
+    gap: 6px;
+  }
+  .memo-name-input {
+    width: 110px;
+    flex-shrink: 0;
+    padding: 7px 8px;
+    border: 1px solid var(--gray-line);
+    border-radius: 6px;
+    font-size: 12.5px;
+  }
+  .memo-input {
+    flex: 1;
+    padding: 7px 10px;
+    border: 1px solid var(--gray-line);
+    border-radius: 6px;
+    font-size: 12.5px;
+  }
+  .memo-submit-btn {
+    align-self: flex-end;
+    padding: 7px 16px;
+    border: 1px solid var(--blue);
+    background: var(--blue);
+    color: var(--white);
+    border-radius: 6px;
+    font-size: 12.5px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .memo-submit-btn:hover {
+    background: var(--blue-dark);
+  }
+  .edit-toggle-btn {
+    cursor: pointer;
+    font-size: 13px;
+    padding: 3px;
+    opacity: 0.6;
+  }
+  .edit-toggle-btn:hover { opacity: 1; }
+  .edit-form {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: var(--bg);
+    border: 1px solid var(--gray-line);
+    border-radius: 8px;
+    padding: 10px;
+  }
+  .edit-form input, .edit-form select, .edit-form textarea {
+    padding: 7px 9px;
+    border: 1px solid var(--gray-line);
+    border-radius: 6px;
+    font-size: 12.5px;
+    font-family: inherit;
+    width: 100%;
+  }
+  .edit-form .form-row {
+    display: flex;
+    gap: 6px;
+  }
+  .edit-form .form-row select, .edit-form .form-row input {
+    flex: 1;
+  }
+  .edit-save-btn {
+    padding: 7px 14px;
+    border: none;
+    border-radius: 6px;
+    background: var(--blue);
+    color: var(--white);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .edit-cancel-btn {
+    padding: 7px 14px;
+    border: 1px solid var(--gray-line);
+    border-radius: 6px;
+    background: var(--white);
+    color: var(--gray-body);
+    font-size: 12.5px;
+    cursor: pointer;
+  }
+
+  .empty-state {
+    max-width: 1120px;
+    margin: 40px auto;
+    text-align: center;
+    color: #9AA3AB;
+    font-size: 14px;
+    padding: 60px 20px;
+  }
+  .loading-state, .error-state {
+    max-width: 1120px;
+    margin: 40px auto;
+    text-align: center;
+    color: #9AA3AB;
+    font-size: 14px;
+    padding: 60px 20px;
+  }
+  .error-state { color: #B23A3A; }
+  .retry-btn {
+    margin-top: 12px;
+    padding: 8px 18px;
+    border: 1px solid var(--blue);
+    color: var(--blue);
+    background: var(--white);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .main-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 0 32px;
+    border-bottom: 1px solid var(--gray-line);
+    background: var(--white);
+  }
+  .main-tab {
+    padding: 12px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #9AA3AB;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    user-select: none;
+  }
+  .main-tab:hover { color: var(--navy); }
+  .main-tab.active {
+    color: var(--navy);
+    border-bottom-color: var(--blue);
+  }
+  .digest-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 32px;
+    display: none;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .digest-card {
+    background: var(--white);
+    border: 1px solid var(--gray-line);
+    border-radius: 10px;
+    padding: 22px 24px;
+  }
+  .digest-card-title {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 10px;
+  }
+  .digest-card-body {
+    font-size: 14px;
+    line-height: 1.9;
+    color: var(--gray-body);
+    white-space: pre-wrap;
+  }
+  .digest-card-meta {
+    font-size: 11.5px;
+    color: #9AA3AB;
+    margin-top: 14px;
+    border-top: 1px solid var(--gray-line);
+    padding-top: 10px;
+  }
+  .digest-empty {
+    font-size: 13px;
+    color: #9AA3AB;
+  }
+  .month-summary-panel {
+    background: var(--white);
+    border: 1px solid var(--gray-line);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-top: 4px;
+  }
+  .month-summary-stats {
+    display: flex;
+    gap: 28px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .month-summary-stat-item {
+    font-size: 13px;
+    color: var(--gray-body);
+  }
+  .month-summary-stat-item b {
+    font-size: 16px;
+    color: var(--navy);
+  }
+  .month-summary-gen-btn {
+    padding: 7px 16px;
+    border: 1px solid var(--blue);
+    border-radius: 7px;
+    background: var(--white);
+    color: var(--blue);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .month-summary-gen-btn:hover { background: var(--blue-soft); }
+  .month-summary-text {
+    font-size: 13.5px;
+    line-height: 1.8;
+    color: var(--gray-body);
+    white-space: pre-wrap;
+  }
+  .month-summary-note {
+    font-size: 11px;
+    color: #9AA3AB;
+    margin-top: 8px;
+  }
+  .digest-memo-section {
+    border-top: 1px solid var(--gray-line);
+    margin-top: 16px;
+    padding-top: 14px;
+  }
+  .digest-memo-header {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-body);
+    margin-bottom: 10px;
+  }
+  .digest-memo-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .digest-memo-item {
+    background: var(--bg);
+    border-radius: 6px;
+    padding: 8px 10px;
+  }
+  .digest-memo-item-top {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 3px;
+  }
+  .digest-memo-author {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--navy);
+  }
+  .digest-memo-date {
+    font-size: 11px;
+    color: #9AA3AB;
+  }
+  .digest-memo-content {
+    font-size: 12.5px;
+    color: var(--gray-body);
+    line-height: 1.6;
+  }
+  .digest-memo-input-row {
+    display: flex;
+    gap: 6px;
+  }
+  .digest-memo-name-input {
+    width: 110px;
+    flex-shrink: 0;
+    padding: 7px 8px;
+    border: 1px solid var(--gray-line);
+    border-radius: 6px;
+    font-size: 12.5px;
+  }
+  .digest-memo-input {
+    flex: 1;
+    padding: 7px 10px;
+    border: 1px solid var(--gray-line);
+    border-radius: 6px;
+    font-size: 12.5px;
+  }
+  .digest-memo-submit-btn {
+    padding: 7px 16px;
+    border: none;
+    border-radius: 6px;
+    background: var(--blue);
+    color: var(--white);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .digest-memo-submit-btn:hover { background: var(--blue-dark); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="header-title">ARTナレッジベース</div>
+    <div class="header-sub">ARCS Inc. / 内部参照用プロトタイプ</div>
+  </div>
+  <div style="width:1px;"></div>
+</div>
+
+<div class="main-tabs">
+  <span class="main-tab active" id="tabNews">📰 ニュース一覧</span>
+  <span class="main-tab" id="tabDigest">🧠 AIによる業界動向分析</span>
+  <span class="main-tab" id="tabAcademic">🔬 学術研究(PubMed)</span>
+</div>
+
+<div class="toolbar" id="newsToolbar">
+  <div class="search-row">
+    <input class="search-input" id="searchInput" type="text" placeholder="🔍 キーワードで検索(タイトル・要約)">
+  </div>
+  <div class="add-news-form" id="reportPanel" style="display:none;"></div>
+  <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+    <span id="newOnlyToggle" class="new-only-toggle active">🆕 新着のみ表示</span>
+    <span style="font-size:11.5px; color:#9AA3AB;">(公開から48時間以内の記事のみ表示中。解除するとすべて表示されます)</span>
+  </div>
+  <div class="chip-row" id="fieldChips"></div>
+  <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+    <span style="font-size:12px; color:#8A95A0; flex-shrink:0;">部門:</span>
+    <div class="chip-row" id="departmentChips" style="margin-bottom:0;"></div>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+    <span style="font-size:12px; color:#8A95A0; flex-shrink:0;">重要度:</span>
+    <div class="chip-row" id="importanceChips" style="margin-bottom:0;"></div>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+    <span style="font-size:12px; color:#8A95A0; flex-shrink:0;">国:</span>
+    <div class="chip-row" id="regionChips" style="margin-bottom:0;"></div>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+    <span style="font-size:12px; color:#8A95A0; flex-shrink:0;">月:</span>
+    <div class="chip-row" id="monthChips" style="margin-bottom:0;"></div>
+  </div>
+  <div class="month-summary-panel" id="monthSummaryPanel" style="display:none;"></div>
+  <div class="count-line-row">
+    <span class="count-line" id="countLine"></span>
+    <div style="display:flex; gap:16px;">
+      <span class="report-link" id="opinionToggleBtn">💬 ご意見・ご要望を送る</span>
+      <span class="report-link" id="criteriaToggleBtn">ℹ️ 判定基準について</span>
+      <span class="report-link" id="reportToggleBtn">📊 直近の週次レポートを見る →</span>
+    </div>
+  </div>
+  <div style="display:flex; justify-content:flex-end;">
+    <div class="add-news-callout">
+      <div class="add-news-callout-left">
+        <span class="add-news-callout-icon">🔗</span>
+        <div>
+          <div class="add-news-callout-title">手動でニュースを追加</div>
+          <div class="add-news-callout-sub">記事のURLを貼れば手動で追加できます</div>
+        </div>
+      </div>
+      <button class="add-news-btn" id="addNewsBtn">+ 追加する</button>
+    </div>
+  </div>
+  <div class="add-news-form" id="addNewsForm" style="display:none;">
+    <div class="form-row">
+      <input type="text" id="formUrl" placeholder="ニュース記事のURLを貼り付け">
+      <button class="add-news-submit-btn" id="addNewsSubmitBtn">登録する</button>
+    </div>
+    <div class="form-row" id="formFallbackRow" style="display:none;">
+      <input type="text" id="formFallbackTitle" placeholder="タイトルを入力してください">
+    </div>
+    <div style="font-size:11.5px;color:#9AA3AB;">
+      タイトル・分野・重要度・国・要約はAIが翌朝までにまとめて判定します。
+    </div>
+    <div class="form-note" id="formNote"></div>
+  </div>
+  <div class="add-news-form" id="criteriaPanel" style="display:none;"></div>
+  <div class="add-news-form" id="opinionForm" style="display:none;">
+    <textarea id="opinionContent" placeholder="ナレッジベース全体へのご意見・ご要望をお書きください" rows="3"></textarea>
+    <div class="form-row">
+      <input type="text" id="opinionAuthor" placeholder="お名前(任意、空欄で匿名)">
+      <button class="add-news-submit-btn" id="opinionSubmitBtn">送信する</button>
+    </div>
+    <div class="form-note" id="opinionNote"></div>
+  </div>
+</div>
+
+<div class="grid" id="cardGrid"></div>
+<div class="empty-state" id="emptyState" style="display:none;">該当する記事がありません。検索条件を変えてみてください。</div>
+<div class="loading-state" id="loadingState">データを読み込んでいます...</div>
+<div class="error-state" id="errorState" style="display:none;">
+  データの取得に失敗しました。<br>
+  <button class="retry-btn" id="retryBtn">再読み込み</button>
+</div>
+
+<div class="digest-container" id="digestContainer"></div>
+<div class="toolbar" id="academicToolbar" style="display:none;">
+  <div class="search-row">
+    <input class="search-input" id="academicSearchInput" type="text" placeholder="🔍 キーワードで検索(タイトル・要約)">
+  </div>
+  <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+    <span style="font-size:12px; color:#8A95A0; flex-shrink:0;">テーマ:</span>
+    <div class="chip-row" id="academicThemeChips" style="margin-bottom:0;"></div>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+    <span style="font-size:12px; color:#8A95A0; flex-shrink:0;">重要度:</span>
+    <div class="chip-row" id="academicImportanceChips" style="margin-bottom:0;"></div>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+    <span style="font-size:12px; color:#8A95A0; flex-shrink:0;">国:</span>
+    <div class="chip-row" id="academicRegionChips" style="margin-bottom:0;"></div>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+    <span style="font-size:12px; color:#8A95A0; flex-shrink:0;">月:</span>
+    <div class="chip-row" id="academicMonthChips" style="margin-bottom:0;"></div>
+  </div>
+  <div class="month-summary-panel" id="academicMonthSummaryPanel" style="display:none;"></div>
+  <div class="count-line-row">
+    <span class="count-line" id="academicCountLine"></span>
+  </div>
+</div>
+<div class="grid" id="academicGrid" style="display:none;"></div>
+
+<script>
+// GAS Web App のURL(ARTナレッジベース スプレッドシート用API)
+const API_URL = "https://script.google.com/a/macros/arcs-inc.jp/s/AKfycbydHNsQDTKuJHWL8a5I1e5hvO-NyfHVDRk2rsARNZ4-FuNNmQ-2ab1zOviRCvCmLTlcQA/exec";
+
+const IMPORTANCE_MAP = { "高": "high", "中": "mid", "低": "low" };
+
+const FIELDS = ["すべて", "ART/生殖医療テクノロジー動向", "規制・政策動向", "学術研究", "業界動向・統計", "競合動向", "その他"];
+const DEPARTMENTS = ["すべて", "開発", "臨床開発", "品質保証", "薬事", "事業開発"];
+const IMPORTANCE_LEVELS = ["すべて", "高", "中", "低"];
+let REGIONS = ["すべて"];
+// (MONTHSは updateMonthsFromData 内で CURRENT_YEAR_MONTHS / OLDER_MONTHS に分割管理)
+let activeField = "すべて";
+let activeDepartment = "すべて";
+let activeImportance = "すべて";
+let activeRegion = "すべて";
+let activeMonth = "すべて";
+let showNewOnly = true; // 初期表示は新着のみに絞る
+let query = "";
+
+function updateRegionsFromData() {
+  const uniqueRegions = [...new Set(DATA.map(item => item.region).filter(Boolean))];
+  uniqueRegions.sort((a, b) => a.localeCompare(b, "ja")); // あいうえお順
+  REGIONS = ["すべて", ...uniqueRegions];
+}
+
+// 複数国が含まれる場合(例:"デンマーク, アメリカ")は「グローバル」として扱う
+function normalizeRegion(region) {
+  if (!region) return "";
+  const hasMultiple = /[,、]/.test(region) || /[・&]/.test(region);
+  return hasMultiple ? "グローバル" : region.trim();
+}
+
+// ISO形式の日付文字列を "2026-08-19" のような表示用に整形する
+function formatDisplayDate(dateStr) {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (isNaN(d)) return String(dateStr);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function itemMonthLabel(dateStr) {
+  const d = new Date(dateStr);
+  if (isNaN(d)) return null;
+  return `${d.getFullYear()}年${d.getMonth() + 1}月`;
+}
+
+let CURRENT_YEAR_MONTHS = ["すべて"];
+let OLDER_MONTHS = [];
+let showOlderMonths = false;
+
+function updateMonthsFromData() {
+  const uniqueMonths = [...new Set(DATA.map(item => itemMonthLabel(item.date)).filter(Boolean))];
+  const parse = (s) => {
+    const m = s.match(/(\d+)年(\d+)月/);
+    return m ? { year: parseInt(m[1]), month: parseInt(m[2]) } : { year: 0, month: 0 };
+  };
+  // 新しい月が先頭に来るように、実際の年月値で降順ソート
+  uniqueMonths.sort((a, b) => {
+    const pa = parse(a), pb = parse(b);
+    return (pb.year * 100 + pb.month) - (pa.year * 100 + pa.month);
+  });
+
+  const thisYear = new Date().getFullYear();
+  const currentYear = uniqueMonths.filter(m => parse(m).year === thisYear);
+  const older = uniqueMonths.filter(m => parse(m).year !== thisYear);
+
+  CURRENT_YEAR_MONTHS = ["すべて", ...currentYear];
+  OLDER_MONTHS = older;
+}
+let DATA = [];
+let MEMOS = {};
+let REPORTS = []; // { "記事ID": [{author, content, date}, ...] }
+let FIELD_DIGESTS = {}; // { "分野名": {generatedAt, content, articleCount} }
+let FIELD_MEMOS = {}; // { "分野名": [{date, author, content}, ...] }
+let PAPERS = []; // PubMedから収集した論文一覧
+let academicQuery = "";
+let academicActiveTheme = "すべて";
+let academicActiveImportance = "すべて";
+let academicActiveRegion = "すべて";
+let academicActiveMonth = "すべて";
+
+// GAS Web AppはCORSに対応していないため、<script>タグを使うJSONP方式でデータを取得する
+function loadData() {
+  document.getElementById("loadingState").style.display = "block";
+  document.getElementById("errorState").style.display = "none";
+  document.getElementById("cardGrid").innerHTML = "";
+  document.getElementById("emptyState").style.display = "none";
+
+  const callbackName = "artKbCallback_" + Date.now();
+  let settled = false;
+
+  const timeoutId = setTimeout(() => {
+    if (!settled) {
+      settled = true;
+      handleLoadError(new Error("タイムアウト"));
+    }
+  }, 15000);
+
+  window[callbackName] = function (json) {
+    if (settled) return;
+    settled = true;
+    clearTimeout(timeoutId);
+    delete window[callbackName];
+    script.remove();
+
+    DATA = (json.items || []).map(item => ({
+      id: item["ID"],
+      title: item["タイトル"],
+      field: item["分野"],
+      importance: IMPORTANCE_MAP[item["重要度"]] || "mid",
+      importanceLabel: item["重要度"] || "中",
+      summary: item["要約"],
+      source: item["ソース種別"],
+      poster: item["投稿者"],
+      date: item["公開日"],
+      registeredAt: item["登録日時"],
+      region: normalizeRegion(item["国"]),
+      departments: (item["部門"] || "").split(",").map(d => d.trim()).filter(Boolean),
+      reason: item["判定理由"] || "",
+      status: item["ステータス"] || "",
+      url: item["元URL"]
+    }));
+
+    // 新着順(記事の公開日が新しい順)に並び替え
+    DATA.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    MEMOS = json.memos || {};
+    REPORTS = json.reports || [];
+    FIELD_DIGESTS = json.fieldDigests || {};
+    FIELD_MEMOS = json.fieldMemos || {};
+    PAPERS = json.papers || [];
+
+    updateRegionsFromData();
+    updateMonthsFromData();
+
+    document.getElementById("loadingState").style.display = "none";
+    render();
+  };
+
+  const script = document.createElement("script");
+  script.src = API_URL + "?callback=" + callbackName;
+  script.onerror = () => {
+    if (!settled) {
+      settled = true;
+      clearTimeout(timeoutId);
+      delete window[callbackName];
+      handleLoadError(new Error("スクリプト読み込み失敗"));
+    }
+  };
+  document.body.appendChild(script);
+}
+
+function handleLoadError(err) {
+  document.getElementById("loadingState").style.display = "none";
+  document.getElementById("errorState").style.display = "block";
+  console.error("データ取得エラー:", err);
+}
+
+document.getElementById("retryBtn").addEventListener("click", loadData);
+
+function renderChips() {
+  const fieldEl = document.getElementById("fieldChips");
+  fieldEl.innerHTML = FIELDS.map(f =>
+    `<div class="chip ${f === activeField ? "active" : ""}" data-field="${f}">${f}</div>`
+  ).join("");
+  fieldEl.querySelectorAll(".chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      activeField = chip.dataset.field;
+      render();
+    });
+  });
+
+  const regionEl = document.getElementById("regionChips");
+  regionEl.innerHTML = REGIONS.map(r =>
+    `<div class="region-chip ${r === activeRegion ? "active" : ""}" data-region="${r}">${r}</div>`
+  ).join("");
+  regionEl.querySelectorAll(".region-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      activeRegion = chip.dataset.region;
+      render();
+    });
+  });
+
+  const deptEl = document.getElementById("departmentChips");
+  deptEl.innerHTML = DEPARTMENTS.map(d =>
+    `<div class="region-chip ${d === activeDepartment ? "active" : ""}" data-department="${d}">${d}</div>`
+  ).join("");
+  deptEl.querySelectorAll(".region-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      activeDepartment = chip.dataset.department;
+      render();
+    });
+  });
+
+  const impEl = document.getElementById("importanceChips");
+  impEl.innerHTML = IMPORTANCE_LEVELS.map(i =>
+    `<div class="region-chip ${i === activeImportance ? "active" : ""}" data-importance="${i}">${i}</div>`
+  ).join("");
+  impEl.querySelectorAll(".region-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      activeImportance = chip.dataset.importance;
+      render();
+    });
+  });
+
+  const monthEl = document.getElementById("monthChips");
+  const monthsToShow = showOlderMonths ? [...CURRENT_YEAR_MONTHS, ...OLDER_MONTHS] : CURRENT_YEAR_MONTHS;
+  let monthHtml = monthsToShow.map(m =>
+    `<div class="region-chip ${m === activeMonth ? "active" : ""}" data-month="${m}">${m}</div>`
+  ).join("");
+  if (OLDER_MONTHS.length > 0) {
+    monthHtml += `<div class="region-chip" id="olderMonthsToggle">${showOlderMonths ? "過去の月を隠す ▲" : `過去の月を見る(${OLDER_MONTHS.length}) ▼`}</div>`;
+  }
+  monthEl.innerHTML = monthHtml;
+
+  monthEl.querySelectorAll(".region-chip[data-month]").forEach(chip => {
+    chip.addEventListener("click", () => {
+      activeMonth = chip.dataset.month;
+      render();
+      updateMonthSummaryPanel("news", activeMonth, "monthSummaryPanel");
+    });
+  });
+  const olderToggle = document.getElementById("olderMonthsToggle");
+  if (olderToggle) {
+    olderToggle.addEventListener("click", () => {
+      showOlderMonths = !showOlderMonths;
+      render();
+    });
+  }
+}
+
+function render() {
+  renderChips();
+  const q = query.trim().toLowerCase();
+  const filtered = DATA.filter(item => {
+    const matchesField = activeField === "すべて" || item.field === activeField;
+    const matchesDepartment = activeDepartment === "すべて" || item.departments.includes(activeDepartment);
+    const matchesImportance = activeImportance === "すべて" || item.importanceLabel === activeImportance;
+    const matchesRegion = activeRegion === "すべて" || item.region === activeRegion;
+    const matchesMonth = activeMonth === "すべて" || itemMonthLabel(item.date) === activeMonth;
+    const matchesQuery = !q || item.title.toLowerCase().includes(q) || item.summary.toLowerCase().includes(q);
+    const matchesNewOnly = !showNewOnly || isNewItem(item.date);
+    return matchesField && matchesDepartment && matchesImportance && matchesRegion && matchesMonth && matchesQuery && matchesNewOnly;
+  });
+
+  document.getElementById("countLine").textContent = `${filtered.length}件表示中(全${DATA.length}件)`;
+
+  const grid = document.getElementById("cardGrid");
+  const empty = document.getElementById("emptyState");
+
+  if (filtered.length === 0) {
+    grid.innerHTML = "";
+    empty.style.display = "block";
+    return;
+  }
+  empty.style.display = "none";
+
+  grid.innerHTML = filtered.map(item => `
+    <div class="card">
+      <div class="card-top">
+        ${item.status === "判定待ち"
+          ? `<span class="pending-tag">⏳ 判定待ち(翌朝までに自動分類されます)</span>`
+          : `<span class="field-tag" style="${fieldTagStyle(item.field)}">${item.field}</span>`}
+        <span class="edit-toggle-btn" data-edit-id="${item.id}" title="編集">✏️</span>
+      </div>
+      <div class="card-top-row2">
+        <div class="hashtag-row">
+          ${item.departments.map(d => `<span class="region-tag">${d}</span>`).join("")}
+          ${item.region ? `<span class="region-tag">${item.region}</span>` : ""}
+        </div>
+        ${isNewItem(item.date) ? '<span class="new-badge">NEW</span>' : ""}
+      </div>
+      <div class="card-title" data-title-id="${item.id}"><a href="${item.url}" target="_blank" rel="noopener">${item.title}</a></div>
+      <div class="card-summary" data-summary-id="${item.id}">${item.summary}</div>
+      <div class="edit-form" data-edit-form-id="${item.id}" style="display:none;">
+        <input type="text" class="edit-title-input" data-id="${item.id}" value="${escapeAttr(item.title)}" placeholder="タイトル">
+        <input type="text" class="edit-url-input" data-id="${item.id}" value="${escapeAttr(item.url)}" placeholder="URL">
+        <div class="form-row">
+          <select class="edit-field-select" data-id="${item.id}">
+            <option value="ART/生殖医療テクノロジー動向" ${item.field === "ART/生殖医療テクノロジー動向" ? "selected" : ""}>ART/生殖医療テクノロジー動向</option>
+            <option value="規制・政策動向" ${item.field === "規制・政策動向" ? "selected" : ""}>規制・政策動向</option>
+            <option value="学術研究" ${item.field === "学術研究" ? "selected" : ""}>学術研究</option>
+            <option value="業界動向・統計" ${item.field === "業界動向・統計" ? "selected" : ""}>業界動向・統計</option>
+            <option value="競合動向" ${item.field === "競合動向" ? "selected" : ""}>競合動向</option>
+            <option value="その他" ${item.field === "その他" ? "selected" : ""}>その他</option>
+          </select>
+          <input type="text" class="edit-country-input" data-id="${item.id}" value="${escapeAttr(item.region)}" placeholder="国">
+          <select class="edit-importance-select" data-id="${item.id}">
+            <option value="高" ${item.importanceLabel === "高" ? "selected" : ""}>重要度: 高</option>
+            <option value="中" ${item.importanceLabel === "中" ? "selected" : ""}>重要度: 中</option>
+            <option value="低" ${item.importanceLabel === "低" ? "selected" : ""}>重要度: 低</option>
+          </select>
+        </div>
+        <textarea class="edit-summary-input" data-id="${item.id}" rows="2" placeholder="要約">${escapeAttr(item.summary)}</textarea>
+        <div class="form-row">
+          <button class="edit-save-btn" data-id="${item.id}">保存</button>
+          <button class="edit-cancel-btn" data-id="${item.id}">キャンセル</button>
+        </div>
+      </div>
+      <div class="meta-row">
+        <div class="meta-row-left">
+          <span class="importance-badge importance-${item.importance}">重要度: ${item.importanceLabel}</span>
+          ${item.reason ? `<span class="reason-toggle" data-reason-id="${item.id}">🔍理由</span>` : ""}
+        </div>
+        <button class="flag-btn ${flagState[item.id] ? "active" : ""}"
+          data-id="${item.id}" data-title="${escapeAttr(item.title)}" data-field="${escapeAttr(item.field)}" data-importance="${escapeAttr(item.importanceLabel)}">
+          ${flagState[item.id] ? "✓ 違和感を記録済み" : "この判定に違和感"}
+        </button>
+      </div>
+      ${item.reason ? `<div class="reason-body" data-reason-body-id="${item.id}" style="display:none;">${escapeAttr(item.reason)}</div>` : ""}
+      <div class="meta-row">
+        <span class="source-badge">${item.source}${item.poster ? " ・ " + item.poster : ""}</span>
+        <span style="font-size:11.5px;color:#9AA3AB;">${formatDisplayDate(item.date)}</span>
+      </div>
+    </div>
+  `).join("");
+
+  grid.querySelectorAll(".flag-btn").forEach(btn => {
+    btn.addEventListener("click", () => onFlagClick(btn));
+  });
+
+  grid.querySelectorAll(".reason-toggle").forEach(toggle => {
+    toggle.addEventListener("click", () => {
+      const body = grid.querySelector(`.reason-body[data-reason-body-id="${toggle.dataset.reasonId}"]`);
+      body.style.display = body.style.display === "none" ? "block" : "none";
+    });
+  });
+
+  grid.querySelectorAll(".edit-toggle-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.editId;
+      const form = grid.querySelector(`.edit-form[data-edit-form-id="${id}"]`);
+      const titleEl = grid.querySelector(`.card-title[data-title-id="${id}"]`);
+      const summaryEl = grid.querySelector(`.card-summary[data-summary-id="${id}"]`);
+      const opening = form.style.display === "none";
+      form.style.display = opening ? "flex" : "none";
+      titleEl.style.display = opening ? "none" : "block";
+      summaryEl.style.display = opening ? "none" : "block";
+    });
+  });
+
+  grid.querySelectorAll(".edit-cancel-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.id;
+      grid.querySelector(`.edit-form[data-edit-form-id="${id}"]`).style.display = "none";
+      grid.querySelector(`.card-title[data-title-id="${id}"]`).style.display = "block";
+      grid.querySelector(`.card-summary[data-summary-id="${id}"]`).style.display = "block";
+    });
+  });
+
+  grid.querySelectorAll(".edit-save-btn").forEach(btn => {
+    btn.addEventListener("click", () => onEditSave(btn));
+  });
+}
+
+function onEditSave(btn) {
+  const id = btn.dataset.id;
+  const grid = document.getElementById("cardGrid");
+
+  const title = grid.querySelector(`.edit-title-input[data-id="${id}"]`).value.trim();
+  const url = grid.querySelector(`.edit-url-input[data-id="${id}"]`).value.trim();
+  const field = grid.querySelector(`.edit-field-select[data-id="${id}"]`).value;
+  const country = grid.querySelector(`.edit-country-input[data-id="${id}"]`).value.trim();
+  const importance = grid.querySelector(`.edit-importance-select[data-id="${id}"]`).value;
+  const summary = grid.querySelector(`.edit-summary-input[data-id="${id}"]`).value.trim();
+
+  if (!title) return;
+
+  // ローカルのDATAも即時更新して見た目に反映
+  const item = DATA.find(d => String(d.id) === String(id));
+  if (item) {
+    item.title = title;
+    item.url = url;
+    item.field = field;
+    item.region = country;
+    item.importance = IMPORTANCE_MAP[importance] || "mid";
+    item.importanceLabel = importance;
+    item.summary = summary;
+  }
+
+  fetch(API_URL, {
+    method: "POST",
+    mode: "no-cors",
+    credentials: "include",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({ action: "updateArticle", id: id, title, url, field, country, importance, summary })
+  }).catch(err => console.error("編集保存エラー:", err));
+
+  render();
+}
+
+function onMemoSubmit(btn) {
+  const id = btn.dataset.id;
+  const input = document.querySelector(`.memo-input[data-id="${id}"]`);
+  const nameInput = document.querySelector(`.memo-name-input[data-id="${id}"]`);
+  const content = input.value.trim();
+  if (!content) return;
+
+  const rawName = nameInput.value.trim();
+  const author = rawName || "匿名";
+  localStorage.setItem("artKbAuthorName", rawName); // 空欄なら次回も空欄のまま(=匿名希望を記憶)
+  savedAuthorName = rawName;
+
+  if (!MEMOS[id]) MEMOS[id] = [];
+  MEMOS[id].push({ author, content, date: "たった今" });
+  input.value = "";
+  render();
+
+  fetch(API_URL, {
+    method: "POST",
+    mode: "no-cors",
+    credentials: "include",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({ action: "addMemo", id: id, author: author, content: content })
+  }).catch(err => console.error("メモ送信エラー:", err));
+}
+
+function escapeAttr(str) {
+  return String(str || "").replace(/"/g, "&quot;");
+}
+
+function escapeHtml(str) {
+  return String(str || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+// Slackのmrkdwn記法(<url|タイトル>、*太字*)をHTML表示用に変換する
+function formatReportContent(content) {
+  let html = escapeHtml(content);
+  // <url|テキスト> → リンク
+  html = html.replace(/&lt;(https?:\/\/[^|&]+)\|([^&]+?)&gt;/g, '<a href="$1" target="_blank" rel="noopener" style="color:var(--blue);">$2</a>');
+  // *太字*
+  html = html.replace(/\*([^*]+)\*/g, '<strong>$1</strong>');
+  // _斜体_(分野の見出しに使われている)
+  html = html.replace(/_([^_]+)_/g, '<em>$1</em>');
+  return html;
+}
+
+const FIELD_COLORS = {
+  "ART/生殖医療テクノロジー動向": { bg: "#EEEDFE", color: "#6D4AA8" },
+  "規制・政策動向": { bg: "#FAECE7", color: "#C0392B" },
+  "学術研究": { bg: "#E1F5EE", color: "#1D8348" },
+  "業界動向・統計": { bg: "#E4EFF9", color: "#1F6FB2" },
+  "競合動向": { bg: "#FDEEDC", color: "#B9660B" },
+  "その他": { bg: "#F1F3F5", color: "#5A6570" }
+};
+
+function fieldTagStyle(field) {
+  const c = FIELD_COLORS[field] || { bg: "#F1F3F5", color: "#6B7580" };
+  return `border-left-color:${c.color};color:${c.color};`;
+}
+
+function isNewItem(publishDate) {
+  if (!publishDate) return false;
+  const published = new Date(publishDate);
+  const hoursSince = (Date.now() - published.getTime()) / 3600000;
+  return hoursSince <= 48; // 公開から48時間以内はNEW扱い
+}
+
+let savedAuthorName = localStorage.getItem("artKbAuthorName") || "";
+
+// { "記事ID": true } の形でブラウザに保存(「この判定に違和感」の記録状態)
+let flagState = JSON.parse(localStorage.getItem("artKbFlags") || "{}");
+
+function onFlagClick(btn) {
+  const id = btn.dataset.id;
+  const newState = !flagState[id];
+
+  if (newState) {
+    flagState[id] = true;
+  } else {
+    delete flagState[id];
+  }
+  localStorage.setItem("artKbFlags", JSON.stringify(flagState));
+  render();
+
+  fetch(API_URL, {
+    method: "POST",
+    mode: "no-cors",
+    credentials: "include",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({
+      action: "flagImportance",
+      id: id,
+      title: btn.dataset.title,
+      field: btn.dataset.field,
+      importance: btn.dataset.importance
+    })
+  }).catch(err => console.error("違和感フラグ送信エラー:", err));
+}
+
+document.getElementById("searchInput").addEventListener("input", (e) => {
+  query = e.target.value;
+  render();
+});
+
+document.getElementById("newOnlyToggle").addEventListener("click", () => {
+  showNewOnly = !showNewOnly;
+  const el = document.getElementById("newOnlyToggle");
+  el.classList.toggle("active", showNewOnly);
+  render();
+});
+
+document.getElementById("addNewsBtn").addEventListener("click", () => {
+  const form = document.getElementById("addNewsForm");
+  form.style.display = form.style.display === "none" ? "flex" : "none";
+});
+
+const FIELD_ORDER = ["ART/生殖医療テクノロジー動向", "規制・政策動向", "学術研究", "業界動向・統計", "競合動向"];
+
+function switchMainTab(activeId) {
+  ["tabNews", "tabDigest", "tabAcademic"].forEach(id => {
+    document.getElementById(id).classList.toggle("active", id === activeId);
+  });
+  document.getElementById("newsToolbar").style.display = activeId === "tabNews" ? "block" : "none";
+  document.getElementById("cardGrid").style.display = activeId === "tabNews" ? "grid" : "none";
+  document.getElementById("emptyState").style.display = "none";
+  document.getElementById("digestContainer").style.display = activeId === "tabDigest" ? "flex" : "none";
+  document.getElementById("academicToolbar").style.display = activeId === "tabAcademic" ? "block" : "none";
+  document.getElementById("academicGrid").style.display = activeId === "tabAcademic" ? "grid" : "none";
+}
+
+document.getElementById("tabNews").addEventListener("click", () => switchMainTab("tabNews"));
+
+document.getElementById("tabDigest").addEventListener("click", () => {
+  switchMainTab("tabDigest");
+  renderDigestTab();
+});
+
+document.getElementById("tabAcademic").addEventListener("click", () => {
+  switchMainTab("tabAcademic");
+  renderAcademicTab();
+});
+
+function academicPaperMonthLabel(dateStr) {
+  const d = new Date(dateStr);
+  if (isNaN(d)) return null;
+  return `${d.getFullYear()}年${d.getMonth() + 1}月`;
+}
+
+function renderAcademicChips() {
+  const uniqueThemes = [...new Set(PAPERS.map(p => p["テーマ"]).filter(Boolean))];
+  const themeOptions = ["すべて", ...uniqueThemes];
+  const themeEl = document.getElementById("academicThemeChips");
+  themeEl.innerHTML = themeOptions.map(t =>
+    `<div class="region-chip ${t === academicActiveTheme ? "active" : ""}" data-theme="${escapeHtml(t)}">${escapeHtml(t)}</div>`
+  ).join("");
+  themeEl.querySelectorAll(".region-chip").forEach(chip => {
+    chip.addEventListener("click", () => { academicActiveTheme = chip.dataset.theme; renderAcademicTab(); });
+  });
+
+  const impEl = document.getElementById("academicImportanceChips");
+  impEl.innerHTML = IMPORTANCE_LEVELS.map(i =>
+    `<div class="region-chip ${i === academicActiveImportance ? "active" : ""}" data-importance="${i}">${i}</div>`
+  ).join("");
+  impEl.querySelectorAll(".region-chip").forEach(chip => {
+    chip.addEventListener("click", () => { academicActiveImportance = chip.dataset.importance; renderAcademicTab(); });
+  });
+
+  const uniqueRegions = [...new Set(PAPERS.map(p => normalizeRegion(p["国"])).filter(Boolean))];
+  uniqueRegions.sort((a, b) => a.localeCompare(b, "ja"));
+  const regionOptions = ["すべて", ...uniqueRegions];
+  const regionEl = document.getElementById("academicRegionChips");
+  regionEl.innerHTML = regionOptions.map(r =>
+    `<div class="region-chip ${r === academicActiveRegion ? "active" : ""}" data-region="${r}">${r}</div>`
+  ).join("");
+  regionEl.querySelectorAll(".region-chip").forEach(chip => {
+    chip.addEventListener("click", () => { academicActiveRegion = chip.dataset.region; renderAcademicTab(); });
+  });
+
+  const uniqueMonths = [...new Set(PAPERS.map(p => academicPaperMonthLabel(p["公開日"])).filter(Boolean))];
+  uniqueMonths.sort((a, b) => {
+    const parse = (s) => { const m = s.match(/(\d+)年(\d+)月/); return m ? parseInt(m[1]) * 100 + parseInt(m[2]) : 0; };
+    return parse(b) - parse(a);
+  });
+  const monthOptions = ["すべて", ...uniqueMonths];
+  const monthEl = document.getElementById("academicMonthChips");
+  monthEl.innerHTML = monthOptions.map(m =>
+    `<div class="region-chip ${m === academicActiveMonth ? "active" : ""}" data-month="${m}">${m}</div>`
+  ).join("");
+  monthEl.querySelectorAll(".region-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      academicActiveMonth = chip.dataset.month;
+      renderAcademicTab();
+      updateMonthSummaryPanel("academic", academicActiveMonth, "academicMonthSummaryPanel");
+    });
+  });
+}
+
+/**
+ * 月チップをクリックした際に、統計を即時表示し、AI要約生成ボタンを設置する
+ * scope: "news" または "academic"
+ */
+function updateMonthSummaryPanel(scope, month, panelId) {
+  const panel = document.getElementById(panelId);
+  if (month === "すべて") {
+    panel.style.display = "none";
+    return;
+  }
+
+  const source = scope === "academic" ? PAPERS : DATA;
+  const getMonthLabel = scope === "academic"
+    ? (p) => academicPaperMonthLabel(p["公開日"])
+    : (item) => itemMonthLabel(item.date);
+  const monthItems = source.filter(x => getMonthLabel(x) === month);
+
+  const counts = { "高": 0, "中": 0, "低": 0 };
+  monthItems.forEach(x => {
+    const imp = scope === "academic" ? x["重要度"] : x.importanceLabel;
+    if (counts[imp] !== undefined) counts[imp]++;
+  });
+
+  panel.style.display = "block";
+  panel.innerHTML = `
+    <div class="month-summary-stats">
+      <div class="month-summary-stat-item"><b>${monthItems.length}件</b><br>総件数</div>
+      <div class="month-summary-stat-item"><b style="color:#C0392B;">${counts["高"]}</b> / <b style="color:#B9660B;">${counts["中"]}</b> / <b>${counts["低"]}</b><br>重要度 高/中/低</div>
+    </div>
+    <div id="${panelId}_body"></div>
+  `;
+
+  renderMonthSummaryBody(scope, month, panelId);
+}
+
+let monthSummaryClientCache = {}; // { "scope:month": {content, articleCount, generatedAt} } セッション内の再問い合わせを減らすためのキャッシュ
+
+function fetchMonthSummary(scope, month, checkOnly, onResult) {
+  const callbackName = "monthSummaryCallback_" + Date.now() + "_" + Math.floor(Math.random() * 10000);
+  const timeoutId = setTimeout(() => {
+    if (window[callbackName]) {
+      delete window[callbackName];
+      onResult({ status: "error", reason: "timeout" });
+    }
+  }, 60000);
+
+  window[callbackName] = function (result) {
+    clearTimeout(timeoutId);
+    delete window[callbackName];
+    onResult(result);
+  };
+
+  const script = document.createElement("script");
+  script.src = API_URL + "?action=generateMonthSummary&scope=" + encodeURIComponent(scope)
+    + "&month=" + encodeURIComponent(month) + "&checkOnly=" + (checkOnly ? "true" : "false")
+    + "&callback=" + callbackName;
+  script.onerror = () => {
+    clearTimeout(timeoutId);
+    delete window[callbackName];
+    onResult({ status: "error", reason: "network" });
+  };
+  document.body.appendChild(script);
+}
+
+function renderMonthSummaryBody(scope, month, panelId) {
+  const body = document.getElementById(`${panelId}_body`);
+  if (!body) return;
+
+  const cacheKey = scope + ":" + month;
+
+  // すでにこのセッション内で取得済みなら、通信せずそのまま表示
+  if (monthSummaryClientCache[cacheKey]) {
+    const r = monthSummaryClientCache[cacheKey];
+    body.innerHTML = `
+      <div class="month-summary-text">${escapeHtml(r.content)}</div>
+      <div class="month-summary-note">対象${r.articleCount}件 ・ 生成日時: ${escapeHtml(r.generatedAt)}</div>
+    `;
+    return;
+  }
+
+  // まずGeminiを呼ばずにサーバー側のキャッシュだけ確認する
+  body.innerHTML = `<div class="month-summary-note">確認中...</div>`;
+  fetchMonthSummary(scope, month, true, (result) => {
+    if (result.status === "ok") {
+      monthSummaryClientCache[cacheKey] = result;
+      body.innerHTML = `
+        <div class="month-summary-text">${escapeHtml(result.content)}</div>
+        <div class="month-summary-note">対象${result.articleCount}件 ・ 生成日時: ${escapeHtml(result.generatedAt)}</div>
+      `;
+      return;
+    }
+    // まだ生成されていない場合だけ、ボタンを表示する
+    body.innerHTML = `<button class="month-summary-gen-btn" id="${panelId}_genBtn">🧠 AIで要約を生成</button>`;
+    document.getElementById(`${panelId}_genBtn`).addEventListener("click", (e) => {
+      const btn = e.target;
+      btn.disabled = true;
+      btn.textContent = "生成中...(件数が多い月は最大1分ほどかかります)";
+
+      fetchMonthSummary(scope, month, false, (genResult) => {
+        if (genResult.status === "ok") {
+          monthSummaryClientCache[cacheKey] = genResult;
+          body.innerHTML = `
+            <div class="month-summary-text">${escapeHtml(genResult.content)}</div>
+            <div class="month-summary-note">対象${genResult.articleCount}件 ・ 生成日時: ${escapeHtml(genResult.generatedAt)}</div>
+          `;
+        } else if (genResult.reason === "timeout") {
+          btn.disabled = false;
+          btn.textContent = "🧠 AIで要約を生成";
+          body.innerHTML += `<div class="month-summary-note">応答がありませんでした。時間をおいて再度お試しください。</div>`;
+        } else {
+          body.innerHTML = `<div class="month-summary-note">要約の生成に失敗しました(${escapeHtml(genResult.reason || "")})。しばらくしてから再度お試しください。</div>`;
+        }
+      });
+    });
+  });
+}
+
+function renderAcademicTab() {
+  renderAcademicChips();
+  const grid = document.getElementById("academicGrid");
+
+  if (PAPERS.length === 0) {
+    grid.innerHTML = `<div class="digest-empty">まだ論文が収集されていません。Apps Scriptで collectAcademicPapers を実行すると収集されます。</div>`;
+    document.getElementById("academicCountLine").textContent = "";
+    return;
+  }
+
+  const q = academicQuery.trim().toLowerCase();
+  const filtered = PAPERS.filter(p => {
+    const matchesTheme = academicActiveTheme === "すべて" || p["テーマ"] === academicActiveTheme;
+    const matchesImportance = academicActiveImportance === "すべて" || p["重要度"] === academicActiveImportance;
+    const matchesRegion = academicActiveRegion === "すべて" || normalizeRegion(p["国"]) === academicActiveRegion;
+    const matchesMonth = academicActiveMonth === "すべて" || academicPaperMonthLabel(p["公開日"]) === academicActiveMonth;
+    const title = (p["タイトル"] || "").toLowerCase();
+    const summary = (p["要約"] || "").toLowerCase();
+    const matchesQuery = !q || title.includes(q) || summary.includes(q);
+    return matchesTheme && matchesImportance && matchesRegion && matchesMonth && matchesQuery;
+  });
+
+  document.getElementById("academicCountLine").textContent = `${filtered.length}件表示中(全${PAPERS.length}件)`;
+
+  if (filtered.length === 0) {
+    grid.innerHTML = `<div class="digest-empty">該当する論文がありません。検索条件を変えてみてください。</div>`;
+    return;
+  }
+
+  const sorted = [...filtered].sort((a, b) => new Date(b["公開日"]) - new Date(a["公開日"]));
+
+  grid.innerHTML = sorted.map(p => `
+    <div class="card">
+      <div class="card-top">
+        <span class="field-tag" style="border-left-color:#6D4AA8;color:#6D4AA8;">学術研究</span>
+        <span class="edit-toggle-btn" title="PMID: ${escapeHtml(p["PMID"])}">🔬</span>
+      </div>
+      <div class="card-top-row2">
+        <div class="hashtag-row">
+          ${p["テーマ"] ? `<span class="region-tag">${escapeHtml(p["テーマ"])}</span>` : ""}
+          ${p["国"] ? `<span class="region-tag">${escapeHtml(p["国"])}</span>` : ""}
+        </div>
+      </div>
+      <div class="card-title"><a href="${escapeHtml(p["元URL"])}" target="_blank" rel="noopener">${escapeHtml(p["タイトル"])}</a></div>
+      <div class="card-summary">${escapeHtml(p["要約"])}</div>
+      <div class="meta-row">
+        <span class="importance-badge importance-${IMPORTANCE_MAP[p["重要度"]] || "mid"}">重要度: ${escapeHtml(p["重要度"] || "中")}</span>
+        <span style="font-size:11.5px;color:#9AA3AB;">${escapeHtml(p["ジャーナル"] || "")}</span>
+      </div>
+      ${p["判定理由"] ? `<div class="reason-body" style="display:block;">${escapeHtml(p["判定理由"])}</div>` : ""}
+      <div class="meta-row">
+        <span class="source-badge">PubMed</span>
+        <span style="font-size:11.5px;color:#9AA3AB;">${formatDisplayDate(p["公開日"])}</span>
+      </div>
+    </div>
+  `).join("");
+}
+
+document.getElementById("academicSearchInput").addEventListener("input", (e) => {
+  academicQuery = e.target.value;
+  renderAcademicTab();
+});
+
+function renderDigestTab() {
+  const container = document.getElementById("digestContainer");
+  const hasAny = FIELD_ORDER.some(f => FIELD_DIGESTS[f]);
+
+  if (!hasAny) {
+    container.innerHTML = `<div class="digest-empty">まだレポートが生成されていません。Apps Scriptで generateFieldDigests を実行すると生成されます。</div>`;
+    return;
+  }
+
+  container.innerHTML = FIELD_ORDER.map(field => {
+    const memos = FIELD_MEMOS[field] || [];
+    const memoListHtml = memos.map(m => `
+      <div class="digest-memo-item">
+        <div class="digest-memo-item-top">
+          <span class="digest-memo-author">${escapeHtml(m.author)}</span>
+          <span class="digest-memo-date">${escapeHtml(m.date)}</span>
+        </div>
+        <div class="digest-memo-content">${escapeHtml(m.content)}</div>
+      </div>
+    `).join("");
+
+    const memoSectionHtml = `
+      <div class="digest-memo-section">
+        <div class="digest-memo-header">💬 メモ ${memos.length}件</div>
+        <div class="digest-memo-list">${memoListHtml}</div>
+        <div class="digest-memo-input-row">
+          <input type="text" class="digest-memo-name-input" placeholder="お名前(任意)" data-field="${escapeHtml(field)}" value="${escapeHtml(savedAuthorName)}">
+          <input type="text" class="digest-memo-input" placeholder="気づいたことをメモ..." data-field="${escapeHtml(field)}">
+          <button class="digest-memo-submit-btn" data-field="${escapeHtml(field)}">投稿</button>
+        </div>
+      </div>
+    `;
+
+    const d = FIELD_DIGESTS[field];
+    if (!d) return `
+      <div class="digest-card">
+        <div class="digest-card-title">${field}</div>
+        <div class="digest-empty">この分野はまだレポートが生成されていません。</div>
+        ${memoSectionHtml}
+      </div>
+    `;
+    return `
+      <div class="digest-card">
+        <div class="digest-card-title">${field}</div>
+        <div class="digest-card-body">${escapeHtml(d.content)}</div>
+        <div class="digest-card-meta">対象記事数: ${d.articleCount}件 ・ 生成日時: ${escapeHtml(d.generatedAt)}</div>
+        ${memoSectionHtml}
+      </div>
+    `;
+  }).join("");
+
+  container.querySelectorAll(".digest-memo-submit-btn").forEach(btn => {
+    btn.addEventListener("click", () => onDigestMemoSubmit(btn));
+  });
+  container.querySelectorAll(".digest-memo-input").forEach(input => {
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        const btn = container.querySelector(`.digest-memo-submit-btn[data-field="${input.dataset.field}"]`);
+        onDigestMemoSubmit(btn);
+      }
+    });
+  });
+}
+
+function onDigestMemoSubmit(btn) {
+  const field = btn.dataset.field;
+  const nameInput = document.querySelector(`.digest-memo-name-input[data-field="${field}"]`);
+  const contentInput = document.querySelector(`.digest-memo-input[data-field="${field}"]`);
+  const content = contentInput.value.trim();
+  if (!content) return;
+
+  const rawName = nameInput.value.trim();
+  const author = rawName || "匿名";
+  localStorage.setItem("artKbAuthorName", rawName);
+  savedAuthorName = rawName;
+
+  if (!FIELD_MEMOS[field]) FIELD_MEMOS[field] = [];
+  FIELD_MEMOS[field].push({ author, content, date: "たった今" });
+  contentInput.value = "";
+  renderDigestTab();
+
+  fetch(API_URL, {
+    method: "POST",
+    mode: "no-cors",
+    credentials: "include",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({ action: "addFieldMemo", field: field, author: author, content: content })
+  }).catch(err => console.error("分野メモ送信エラー:", err));
+}
+
+document.getElementById("opinionToggleBtn").addEventListener("click", () => {
+  const form = document.getElementById("opinionForm");
+  form.style.display = form.style.display === "none" ? "flex" : "none";
+});
+
+document.getElementById("opinionSubmitBtn").addEventListener("click", () => {
+  const content = document.getElementById("opinionContent").value.trim();
+  if (!content) {
+    document.getElementById("opinionNote").textContent = "内容を入力してください";
+    return;
+  }
+  const author = document.getElementById("opinionAuthor").value.trim();
+
+  fetch(API_URL, {
+    method: "POST",
+    mode: "no-cors",
+    credentials: "include",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({ action: "generalFeedback", content: content, author: author })
+  }).catch(err => console.error("全体意見送信エラー:", err));
+
+  document.getElementById("opinionNote").textContent = "送信しました。ありがとうございます。";
+  document.getElementById("opinionContent").value = "";
+});
+
+document.getElementById("criteriaToggleBtn").addEventListener("click", () => {
+  const panel = document.getElementById("criteriaPanel");
+  if (panel.style.display === "none") {
+    panel.innerHTML = `
+      <div style="font-size:13px; line-height:1.9; color:var(--gray-body);">
+        <strong style="color:var(--navy);">分野の分類</strong><br>
+        Web検索(自動収集)は、ART/生殖医療テクノロジー動向・規制政策動向・学術研究・業界動向統計・競合動向のいずれにも該当しない記事、および個人の体験談・芸能ニュースは「対象外」として登録しません。手動追加の記事は、社内メンバーの一次判断を尊重し「対象外」にはせず、必ずいずれかの分野(該当なしの場合は「その他」)に分類します。<br><br>
+        <strong style="color:var(--navy);">重要度の判定基準</strong><br>
+        ・<b>高</b>: 公式発表・臨床データ・法改正・規制当局の正式決定など一次情報であり、かつARCSの事業領域(生殖医療AI・SaMD・ICSI自動化)の意思決定に直接影響するもの<br>
+        ・<b>中</b>: 業界動向・研究発表・隣接領域の情報で、参考情報として有用だが即座の意思決定には直結しないもの<br>
+        ・<b>低</b>: 統計の微修正、単発の展示会情報、間接的にしか関連しない一般ニュースなど<br>
+        各記事には、この基準のどれに該当したかをAIが一言で記録しており、カード下部の「🔍判定理由を見る」から確認できます。<br><br>
+        <strong style="color:var(--navy);">部門タグの判定基準</strong><br>
+        ・開発(AI・医療機器開発): AI技術・アルゴリズム、ロボティクス・自動化技術、機器設計、技術実装事例<br>
+        ・臨床開発: 臨床試験・治験、臨床アウトカム、有効性・安全性データ<br>
+        ・品質保証: 品質マネジメントシステム、ISO規格、品質不具合、リスクマネジメント<br>
+        ・薬事: 規制当局動向、承認・認証プロセス、法改正、薬事区分<br>
+        ・事業開発: 市場規模、資金調達、企業提携・M&A、事業戦略<br><br>
+        <strong style="color:var(--navy);">競合動向の対象</strong><br>
+        Overture Life、Conceivable Life Sciences、BAIBYS、IVF2.0/SiD、VitruvianMD、NeoGenix Fertility、Fertilis、BetterFit、Optimaton.ai、SpOvum/RoboICSI、Fertsyなど、生殖医療AI・ICSI自動化領域の競合企業に関する記事を対象とします。<br><br>
+        <span style="font-size:11.5px; color:#9AA3AB;">※この基準はAIへの指示内容(プロンプト)をそのまま表示しています。実際の判定と乖離が見つかった場合は、随時見直します。</span>
+      </div>
+    `;
+    panel.style.display = "flex";
+  } else {
+    panel.style.display = "none";
+  }
+});
+
+document.getElementById("reportToggleBtn").addEventListener("click", () => {
+  const panel = document.getElementById("reportPanel");
+  if (panel.style.display === "none") {
+    renderReportPanel();
+    panel.style.display = "flex";
+  } else {
+    panel.style.display = "none";
+  }
+});
+
+function renderReportPanel() {
+  const panel = document.getElementById("reportPanel");
+  if (REPORTS.length === 0) {
+    panel.innerHTML = `<div style="font-size:13px;color:#9AA3AB;">まだ週次レポートは送信されていません。</div>`;
+    return;
+  }
+  panel.innerHTML = REPORTS.map((r, idx) => `
+    <div style="border:1px solid var(--gray-line);border-radius:8px;">
+      <div class="report-header" data-report-idx="${idx}" style="padding:10px 14px;cursor:pointer;font-size:13px;font-weight:600;color:var(--navy);display:flex;justify-content:space-between;">
+        <span>📅 ${escapeHtml(r.period)}(送信: ${escapeHtml(r.sentAt)})</span>
+        <span style="color:#9AA3AB;font-weight:400;">クリックで開閉</span>
+      </div>
+      <div class="report-body" data-report-body-idx="${idx}" style="display:none;padding:0 14px 14px;white-space:pre-wrap;font-size:12.5px;line-height:1.7;color:var(--gray-body);">${formatReportContent(r.content)}</div>
+    </div>
+  `).join("");
+
+  panel.querySelectorAll(".report-header").forEach(header => {
+    header.addEventListener("click", () => {
+      const body = panel.querySelector(`.report-body[data-report-body-idx="${header.dataset.reportIdx}"]`);
+      body.style.display = body.style.display === "none" ? "block" : "none";
+    });
+  });
+}
+
+document.getElementById("addNewsSubmitBtn").addEventListener("click", () => {
+  const url = document.getElementById("formUrl").value.trim();
+  const fallbackTitle = document.getElementById("formFallbackTitle").value.trim();
+
+  if (!url) {
+    document.getElementById("formNote").textContent = "URLを入力してください";
+    return;
+  }
+
+  const submitBtn = document.getElementById("addNewsSubmitBtn");
+  submitBtn.disabled = true;
+  document.getElementById("formNote").textContent = "登録中...";
+
+  const callbackName = "artKbAddCallback_" + Date.now();
+  const timeoutId = setTimeout(() => {
+    if (window[callbackName]) {
+      delete window[callbackName];
+      submitBtn.disabled = false;
+      document.getElementById("formNote").textContent = "応答がありませんでした。時間をおいて再度お試しください。";
+    }
+  }, 20000);
+
+  window[callbackName] = function (result) {
+    clearTimeout(timeoutId);
+    delete window[callbackName];
+    submitBtn.disabled = false;
+
+    if (result.status === "ok") {
+      document.getElementById("formNote").textContent = "登録しました。「判定待ち」の状態で表示されます(翌朝AIが分野・重要度・国を判定します)。画面を再読み込みしてください。";
+      document.getElementById("formUrl").value = "";
+      document.getElementById("formFallbackTitle").value = "";
+      document.getElementById("formFallbackRow").style.display = "none";
+    } else if (result.status === "skipped" && result.reason === "duplicate_url") {
+      document.getElementById("formNote").textContent = "このURLはすでに登録済みです。";
+    } else if (result.reason === "title_not_found") {
+      document.getElementById("formFallbackRow").style.display = "flex";
+      document.getElementById("formNote").textContent = "ページからタイトルを自動取得できませんでした。上の欄にタイトルを入力して、もう一度「登録する」を押してください。";
+    } else {
+      document.getElementById("formNote").textContent = "登録に失敗しました。URLが正しいか確認してください。";
+    }
+  };
+
+  const script = document.createElement("script");
+  script.src = API_URL + "?action=manualAdd&url=" + encodeURIComponent(url)
+    + "&fallbackTitle=" + encodeURIComponent(fallbackTitle)
+    + "&callback=" + callbackName;
+  script.onerror = () => {
+    clearTimeout(timeoutId);
+    delete window[callbackName];
+    submitBtn.disabled = false;
+    document.getElementById("formNote").textContent = "通信に失敗しました。もう一度お試しください。";
+  };
+  document.body.appendChild(script);
+});
+
+loadData();
+</script>
+
+</body>
+</html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
