@@ -1445,51 +1445,85 @@ function updateMonthSummaryPanel(scope, month, panelId) {
   renderMonthSummaryBody(scope, month, panelId);
 }
 
+let monthSummaryClientCache = {}; // { "scope:month": {content, articleCount, generatedAt} } セッション内の再問い合わせを減らすためのキャッシュ
+
+function fetchMonthSummary(scope, month, checkOnly, onResult) {
+  const callbackName = "monthSummaryCallback_" + Date.now() + "_" + Math.floor(Math.random() * 10000);
+  const timeoutId = setTimeout(() => {
+    if (window[callbackName]) {
+      delete window[callbackName];
+      onResult({ status: "error", reason: "timeout" });
+    }
+  }, 30000);
+
+  window[callbackName] = function (result) {
+    clearTimeout(timeoutId);
+    delete window[callbackName];
+    onResult(result);
+  };
+
+  const script = document.createElement("script");
+  script.src = API_URL + "?action=generateMonthSummary&scope=" + encodeURIComponent(scope)
+    + "&month=" + encodeURIComponent(month) + "&checkOnly=" + (checkOnly ? "true" : "false")
+    + "&callback=" + callbackName;
+  script.onerror = () => {
+    clearTimeout(timeoutId);
+    delete window[callbackName];
+    onResult({ status: "error", reason: "network" });
+  };
+  document.body.appendChild(script);
+}
+
 function renderMonthSummaryBody(scope, month, panelId) {
   const body = document.getElementById(`${panelId}_body`);
   if (!body) return;
 
-  body.innerHTML = `<button class="month-summary-gen-btn" id="${panelId}_genBtn">🧠 AIで要約を生成</button>`;
+  const cacheKey = scope + ":" + month;
 
-  document.getElementById(`${panelId}_genBtn`).addEventListener("click", (e) => {
-    const btn = e.target;
-    btn.disabled = true;
-    btn.textContent = "生成中...(数十秒かかる場合があります)";
+  // すでにこのセッション内で取得済みなら、通信せずそのまま表示
+  if (monthSummaryClientCache[cacheKey]) {
+    const r = monthSummaryClientCache[cacheKey];
+    body.innerHTML = `
+      <div class="month-summary-text">${escapeHtml(r.content)}</div>
+      <div class="month-summary-note">対象${r.articleCount}件 ・ 生成日時: ${escapeHtml(r.generatedAt)}</div>
+    `;
+    return;
+  }
 
-    const callbackName = "monthSummaryCallback_" + Date.now();
-    const timeoutId = setTimeout(() => {
-      if (window[callbackName]) {
-        delete window[callbackName];
-        btn.disabled = false;
-        btn.textContent = "🧠 AIで要約を生成";
-        body.innerHTML += `<div class="month-summary-note">応答がありませんでした。時間をおいて再度お試しください。</div>`;
-      }
-    }, 30000);
+  // まずGeminiを呼ばずにサーバー側のキャッシュだけ確認する
+  body.innerHTML = `<div class="month-summary-note">確認中...</div>`;
+  fetchMonthSummary(scope, month, true, (result) => {
+    if (result.status === "ok") {
+      monthSummaryClientCache[cacheKey] = result;
+      body.innerHTML = `
+        <div class="month-summary-text">${escapeHtml(result.content)}</div>
+        <div class="month-summary-note">対象${result.articleCount}件 ・ 生成日時: ${escapeHtml(result.generatedAt)}</div>
+      `;
+      return;
+    }
+    // まだ生成されていない場合だけ、ボタンを表示する
+    body.innerHTML = `<button class="month-summary-gen-btn" id="${panelId}_genBtn">🧠 AIで要約を生成</button>`;
+    document.getElementById(`${panelId}_genBtn`).addEventListener("click", (e) => {
+      const btn = e.target;
+      btn.disabled = true;
+      btn.textContent = "生成中...(数十秒かかる場合があります)";
 
-    window[callbackName] = function (result) {
-      clearTimeout(timeoutId);
-      delete window[callbackName];
-
-      if (result.status === "ok") {
-        body.innerHTML = `
-          <div class="month-summary-text">${escapeHtml(result.content)}</div>
-          <div class="month-summary-note">${result.cached ? "(保存済みの要約を表示)" : "(今回新しく生成しました)"} 対象${result.articleCount}件 ・ 生成日時: ${escapeHtml(result.generatedAt)}</div>
-        `;
-      } else {
-        body.innerHTML = `<div class="month-summary-note">要約の生成に失敗しました(${escapeHtml(result.reason || "")})。しばらくしてから再度お試しください。</div>`;
-      }
-    };
-
-    const script = document.createElement("script");
-    script.src = API_URL + "?action=generateMonthSummary&scope=" + encodeURIComponent(scope)
-      + "&month=" + encodeURIComponent(month) + "&callback=" + callbackName;
-    script.onerror = () => {
-      clearTimeout(timeoutId);
-      delete window[callbackName];
-      btn.disabled = false;
-      btn.textContent = "🧠 AIで要約を生成";
-    };
-    document.body.appendChild(script);
+      fetchMonthSummary(scope, month, false, (genResult) => {
+        if (genResult.status === "ok") {
+          monthSummaryClientCache[cacheKey] = genResult;
+          body.innerHTML = `
+            <div class="month-summary-text">${escapeHtml(genResult.content)}</div>
+            <div class="month-summary-note">対象${genResult.articleCount}件 ・ 生成日時: ${escapeHtml(genResult.generatedAt)}</div>
+          `;
+        } else if (genResult.reason === "timeout") {
+          btn.disabled = false;
+          btn.textContent = "🧠 AIで要約を生成";
+          body.innerHTML += `<div class="month-summary-note">応答がありませんでした。時間をおいて再度お試しください。</div>`;
+        } else {
+          body.innerHTML = `<div class="month-summary-note">要約の生成に失敗しました(${escapeHtml(genResult.reason || "")})。しばらくしてから再度お試しください。</div>`;
+        }
+      });
+    });
   });
 }
 
