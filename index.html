@@ -628,6 +628,35 @@
     border-top: 1px solid var(--gray-line);
     padding-top: 10px;
   }
+  .digest-card-meta-toggle {
+    cursor: pointer;
+    user-select: none;
+  }
+  .digest-card-meta-toggle:hover {
+    color: var(--blue);
+  }
+  .digest-toggle-arrow {
+    font-size: 9px;
+  }
+  .digest-article-list {
+    list-style: none;
+    margin: 8px 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .digest-article-list li {
+    font-size: 12.5px;
+    line-height: 1.5;
+  }
+  .digest-article-list li a {
+    color: var(--blue);
+    text-decoration: none;
+  }
+  .digest-article-list li a:hover {
+    text-decoration: underline;
+  }
   .digest-empty {
     font-size: 13px;
     color: #9AA3AB;
@@ -1690,15 +1719,29 @@ function renderDigestTab() {
         ${memoSectionHtml}
       </div>
     `;
+    const articleListHtml = (d.articles || []).map(a => `
+      <li><a href="${escapeHtml(a.url)}" target="_blank" rel="noopener">${escapeHtml(a.title)}</a></li>
+    `).join("");
     return `
       <div class="digest-card">
         <div class="digest-card-title">${field}</div>
         <div class="digest-card-body">${escapeHtml(d.content)}</div>
-        <div class="digest-card-meta">対象記事数: ${d.articleCount}件 ・ 生成日時: ${escapeHtml(d.generatedAt)}</div>
+        <div class="digest-card-meta digest-card-meta-toggle" data-field="${escapeHtml(field)}">対象記事数: ${d.articleCount}件 ・ 生成日時: ${escapeHtml(d.generatedAt)} <span class="digest-toggle-arrow">▼</span></div>
+        <ul class="digest-article-list" data-field-list="${escapeHtml(field)}" style="display:none;">${articleListHtml}</ul>
         ${memoSectionHtml}
       </div>
     `;
   }).join("");
+
+  container.querySelectorAll(".digest-card-meta-toggle").forEach(el => {
+    el.addEventListener("click", () => {
+      const list = container.querySelector(`.digest-article-list[data-field-list="${el.dataset.field}"]`);
+      const arrow = el.querySelector(".digest-toggle-arrow");
+      const isOpen = list.style.display !== "none";
+      list.style.display = isOpen ? "none" : "block";
+      if (arrow) arrow.textContent = isOpen ? "▼" : "▲";
+    });
+  });
 
   container.querySelectorAll(".digest-memo-submit-btn").forEach(btn => {
     btn.addEventListener("click", () => onDigestMemoSubmit(btn));
