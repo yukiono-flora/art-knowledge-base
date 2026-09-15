@@ -608,12 +608,28 @@
     border-radius: 10px;
     padding: 22px 24px;
   }
+  .digest-card-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
   .digest-card-title {
     font-family: Georgia, "Times New Roman", serif;
     font-size: 18px;
     font-weight: 700;
     color: var(--navy);
-    margin-bottom: 10px;
+  }
+  .digest-date-select {
+    font-size: 12px;
+    padding: 5px 8px;
+    border: 1px solid var(--gray-line);
+    border-radius: 6px;
+    color: var(--gray-body);
+    background: var(--white);
+    flex-shrink: 0;
   }
   .digest-card-body {
     font-size: 14px;
@@ -979,7 +995,8 @@ function updateMonthsFromData() {
 let DATA = [];
 let MEMOS = {};
 let REPORTS = []; // { "記事ID": [{author, content, date}, ...] }
-let FIELD_DIGESTS = {}; // { "分野名": {generatedAt, content, articleCount} }
+let FIELD_DIGEST_HISTORY = {}; // { "分野名": [{generatedAt, content, articleCount, articles}, ...] } 新しい順
+let digestSelectedIndex = {}; // { "分野名": 選択中のインデックス(0=最新) }
 let FIELD_MEMOS = {}; // { "分野名": [{date, author, content}, ...] }
 let PAPERS = []; // PubMedから収集した論文一覧
 let academicQuery = "";
@@ -1035,7 +1052,7 @@ function loadData() {
 
     MEMOS = json.memos || {};
     REPORTS = json.reports || [];
-    FIELD_DIGESTS = json.fieldDigests || {};
+    FIELD_DIGEST_HISTORY = json.fieldDigestHistory || {};
     FIELD_MEMOS = json.fieldMemos || {};
     PAPERS = json.papers || [];
 
@@ -1680,7 +1697,7 @@ document.getElementById("academicSearchInput").addEventListener("input", (e) => 
 
 function renderDigestTab() {
   const container = document.getElementById("digestContainer");
-  const hasAny = FIELD_ORDER.some(f => FIELD_DIGESTS[f]);
+  const hasAny = FIELD_ORDER.some(f => (FIELD_DIGEST_HISTORY[f] || []).length > 0);
 
   if (!hasAny) {
     container.innerHTML = `<div class="digest-empty">まだレポートが生成されていません。Apps Scriptで generateFieldDigests を実行すると生成されます。</div>`;
@@ -1711,27 +1728,44 @@ function renderDigestTab() {
       </div>
     `;
 
-    const d = FIELD_DIGESTS[field];
-    if (!d) return `
+    const history = FIELD_DIGEST_HISTORY[field] || [];
+    if (history.length === 0) return `
       <div class="digest-card">
         <div class="digest-card-title">${field}</div>
         <div class="digest-empty">この分野はまだレポートが生成されていません。</div>
         ${memoSectionHtml}
       </div>
     `;
+
+    const selectedIdx = Math.min(digestSelectedIndex[field] || 0, history.length - 1);
+    const d = history[selectedIdx];
     const articleListHtml = (d.articles || []).map(a => `
       <li><a href="${escapeHtml(a.url)}" target="_blank" rel="noopener">${escapeHtml(a.title)}</a></li>
     `).join("");
+    const dateOptionsHtml = history.map((h, idx) =>
+      `<option value="${idx}" ${idx === selectedIdx ? "selected" : ""}>${escapeHtml(h.generatedAt)}${idx === 0 ? "(最新)" : ""}</option>`
+    ).join("");
+
     return `
       <div class="digest-card">
-        <div class="digest-card-title">${field}</div>
+        <div class="digest-card-title-row">
+          <div class="digest-card-title">${field}</div>
+          <select class="digest-date-select" data-field="${escapeHtml(field)}">${dateOptionsHtml}</select>
+        </div>
         <div class="digest-card-body">${escapeHtml(d.content)}</div>
-        <div class="digest-card-meta digest-card-meta-toggle" data-field="${escapeHtml(field)}">対象記事数: ${d.articleCount}件 ・ 生成日時: ${escapeHtml(d.generatedAt)} <span class="digest-toggle-arrow">▼</span></div>
+        <div class="digest-card-meta digest-card-meta-toggle" data-field="${escapeHtml(field)}">対象記事数: ${d.articleCount}件</div>
         <ul class="digest-article-list" data-field-list="${escapeHtml(field)}" style="display:none;">${articleListHtml}</ul>
         ${memoSectionHtml}
       </div>
     `;
   }).join("");
+
+  container.querySelectorAll(".digest-date-select").forEach(sel => {
+    sel.addEventListener("change", () => {
+      digestSelectedIndex[sel.dataset.field] = parseInt(sel.value, 10);
+      renderDigestTab();
+    });
+  });
 
   container.querySelectorAll(".digest-card-meta-toggle").forEach(el => {
     el.addEventListener("click", () => {
