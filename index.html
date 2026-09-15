@@ -972,6 +972,7 @@ function itemMonthLabel(dateStr) {
 let CURRENT_YEAR_MONTHS = ["すべて"];
 let OLDER_MONTHS = [];
 let showOlderMonths = false;
+let showOlderAcademicMonths = false;
 
 function updateMonthsFromData() {
   const uniqueMonths = [...new Set(DATA.map(item => itemMonthLabel(item.date)).filter(Boolean))];
@@ -1497,22 +1498,39 @@ function renderAcademicChips() {
   });
 
   const uniqueMonths = [...new Set(PAPERS.map(p => academicPaperMonthLabel(p["公開日"])).filter(Boolean))];
+  const parseMonth = (s) => { const m = s.match(/(\d+)年(\d+)月/); return m ? { year: parseInt(m[1]), month: parseInt(m[2]) } : { year: 0, month: 0 }; };
   uniqueMonths.sort((a, b) => {
-    const parse = (s) => { const m = s.match(/(\d+)年(\d+)月/); return m ? parseInt(m[1]) * 100 + parseInt(m[2]) : 0; };
-    return parse(b) - parse(a);
+    const pa = parseMonth(a), pb = parseMonth(b);
+    return (pb.year * 100 + pb.month) - (pa.year * 100 + pa.month);
   });
-  const monthOptions = ["すべて", ...uniqueMonths];
+  const thisYear = new Date().getFullYear();
+  const currentYearAcademicMonths = uniqueMonths.filter(m => parseMonth(m).year === thisYear);
+  const olderAcademicMonths = uniqueMonths.filter(m => parseMonth(m).year !== thisYear);
+
   const monthEl = document.getElementById("academicMonthChips");
-  monthEl.innerHTML = monthOptions.map(m =>
+  const academicMonthsToShow = showOlderAcademicMonths ? [...currentYearAcademicMonths, ...olderAcademicMonths] : currentYearAcademicMonths;
+  let academicMonthHtml = ["すべて", ...academicMonthsToShow].map(m =>
     `<div class="region-chip ${m === academicActiveMonth ? "active" : ""}" data-month="${m}">${m}</div>`
   ).join("");
-  monthEl.querySelectorAll(".region-chip").forEach(chip => {
+  if (olderAcademicMonths.length > 0) {
+    academicMonthHtml += `<div class="region-chip" id="olderAcademicMonthsToggle">${showOlderAcademicMonths ? "過去の月を隠す ▲" : `過去の月を見る(${olderAcademicMonths.length}) ▼`}</div>`;
+  }
+  monthEl.innerHTML = academicMonthHtml;
+
+  monthEl.querySelectorAll(".region-chip[data-month]").forEach(chip => {
     chip.addEventListener("click", () => {
       academicActiveMonth = chip.dataset.month;
       renderAcademicTab();
       updateMonthSummaryPanel("academic", academicActiveMonth, "academicMonthSummaryPanel");
     });
   });
+  const olderAcademicToggle = document.getElementById("olderAcademicMonthsToggle");
+  if (olderAcademicToggle) {
+    olderAcademicToggle.addEventListener("click", () => {
+      showOlderAcademicMonths = !showOlderAcademicMonths;
+      renderAcademicTab();
+    });
+  }
 }
 
 /**
