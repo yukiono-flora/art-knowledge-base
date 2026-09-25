@@ -502,14 +502,26 @@
     opacity: 0.6;
   }
   .edit-toggle-btn:hover { opacity: 1; }
-  .bookmark-btn, .bookmark-btn-academic {
+  .bookmark-btn-full {
+    width: 100%;
+    padding: 8px 0;
+    border: 1px solid var(--gray-line);
+    border-radius: 7px;
+    background: var(--white);
+    color: #8A95A0;
+    font-size: 12.5px;
+    font-weight: 600;
     cursor: pointer;
-    font-size: 14px;
-    padding: 3px;
-    opacity: 0.6;
   }
-  .bookmark-btn:hover, .bookmark-btn-academic:hover { opacity: 1; }
-  .bookmark-btn.active, .bookmark-btn-academic.active { opacity: 1; }
+  .bookmark-btn-full:hover {
+    border-color: var(--blue);
+    color: var(--blue);
+  }
+  .bookmark-btn-full.active {
+    border-color: #B9660B;
+    background: #FDEEDC;
+    color: #B9660B;
+  }
   .edit-form {
     display: flex;
     flex-direction: column;
@@ -1208,7 +1220,6 @@ function render() {
           ? `<span class="pending-tag">⏳ 判定待ち(翌朝までに自動分類されます)</span>`
           : `<span class="field-tag" style="${fieldTagStyle(item.field)}">${item.field}</span>`}
         <div class="card-top-right">
-          <span class="bookmark-btn ${bookmarkState[item.id] ? "active" : ""}" data-id="${item.id}" title="ブックマーク">🔖</span>
           <span class="edit-toggle-btn" data-edit-id="${item.id}" title="編集">✏️</span>
         </div>
       </div>
@@ -1261,6 +1272,9 @@ function render() {
         <span class="source-badge">${item.source}${item.poster ? " ・ " + item.poster : ""}</span>
         <span style="font-size:11.5px;color:#9AA3AB;">${formatDisplayDate(item.date)}</span>
       </div>
+      <button class="bookmark-btn-full ${bookmarkState[item.id] ? "active" : ""}" data-id="${item.id}">
+        🔖 ${bookmarkState[item.id] ? "ブックマーク済み" : "ブックマークする"}
+      </button>
     </div>
   `).join("");
 
@@ -1275,7 +1289,7 @@ function render() {
     });
   });
 
-  grid.querySelectorAll(".bookmark-btn").forEach(btn => {
+  grid.querySelectorAll(".bookmark-btn-full").forEach(btn => {
     btn.addEventListener("click", () => onBookmarkClick(btn));
   });
 
@@ -1754,7 +1768,6 @@ function renderAcademicTab() {
       <div class="card-top">
         <span class="field-tag" style="border-left-color:#6D4AA8;color:#6D4AA8;">学術研究</span>
         <div class="card-top-right">
-          <span class="bookmark-btn-academic ${bookmarkState["paper:" + p["PMID"]] ? "active" : ""}" data-id="paper:${escapeHtml(p["PMID"])}" title="ブックマーク">🔖</span>
           <span class="edit-toggle-btn" title="PMID: ${escapeHtml(p["PMID"])}">🔬</span>
         </div>
       </div>
@@ -1775,10 +1788,13 @@ function renderAcademicTab() {
         <span class="source-badge">${(p["元URL"] || "").includes("pubmed.ncbi.nlm.nih.gov") ? "PubMed" : "Europe PMC"}</span>
         <span style="font-size:11.5px;color:#9AA3AB;">${formatDisplayDate(p["公開日"])}</span>
       </div>
+      <button class="bookmark-btn-full ${bookmarkState["paper:" + p["PMID"]] ? "active" : ""}" data-id="paper:${escapeHtml(p["PMID"])}">
+        🔖 ${bookmarkState["paper:" + p["PMID"]] ? "ブックマーク済み" : "ブックマークする"}
+      </button>
     </div>
   `).join("");
 
-  grid.querySelectorAll(".bookmark-btn-academic").forEach(btn => {
+  grid.querySelectorAll(".bookmark-btn-full").forEach(btn => {
     btn.addEventListener("click", () => onBookmarkClickAcademic(btn));
   });
 }
