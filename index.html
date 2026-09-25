@@ -1208,7 +1208,7 @@ function render() {
           ? `<span class="pending-tag">⏳ 判定待ち(翌朝までに自動分類されます)</span>`
           : `<span class="field-tag" style="${fieldTagStyle(item.field)}">${item.field}</span>`}
         <div class="card-top-right">
-          <span class="bookmark-btn ${bookmarkState[item.id] ? "active" : ""}" data-id="${item.id}" title="ブックマーク">${bookmarkState[item.id] ? "🔖" : "📑"}</span>
+          <span class="bookmark-btn ${bookmarkState[item.id] ? "active" : ""}" data-id="${item.id}" title="ブックマーク">🔖</span>
           <span class="edit-toggle-btn" data-edit-id="${item.id}" title="編集">✏️</span>
         </div>
       </div>
@@ -1754,7 +1754,7 @@ function renderAcademicTab() {
       <div class="card-top">
         <span class="field-tag" style="border-left-color:#6D4AA8;color:#6D4AA8;">学術研究</span>
         <div class="card-top-right">
-          <span class="bookmark-btn-academic ${bookmarkState["paper:" + p["PMID"]] ? "active" : ""}" data-id="paper:${escapeHtml(p["PMID"])}" title="ブックマーク">${bookmarkState["paper:" + p["PMID"]] ? "🔖" : "📑"}</span>
+          <span class="bookmark-btn-academic ${bookmarkState["paper:" + p["PMID"]] ? "active" : ""}" data-id="paper:${escapeHtml(p["PMID"])}" title="ブックマーク">🔖</span>
           <span class="edit-toggle-btn" title="PMID: ${escapeHtml(p["PMID"])}">🔬</span>
         </div>
       </div>
