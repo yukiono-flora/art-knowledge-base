@@ -502,6 +502,14 @@
     opacity: 0.6;
   }
   .edit-toggle-btn:hover { opacity: 1; }
+  .bookmark-btn, .bookmark-btn-academic {
+    cursor: pointer;
+    font-size: 14px;
+    padding: 3px;
+    opacity: 0.6;
+  }
+  .bookmark-btn:hover, .bookmark-btn-academic:hover { opacity: 1; }
+  .bookmark-btn.active, .bookmark-btn-academic.active { opacity: 1; }
   .edit-form {
     display: flex;
     flex-direction: column;
@@ -815,12 +823,16 @@
     <input class="search-input" id="searchInput" type="text" placeholder="🔍 キーワードで検索(タイトル・要約)">
   </div>
   <div class="add-news-form" id="reportPanel" style="display:none;"></div>
-  <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+  <div style="display:flex; align-items:center; gap:16px; margin-bottom:10px; flex-wrap:wrap;">
     <span id="newOnlyToggle" class="new-only-toggle active">
       🆕 新着のみ表示
       <span class="new-only-switch"><span class="new-only-switch-knob"></span></span>
     </span>
     <span style="font-size:11.5px; color:#9AA3AB;">(公開から48時間以内の記事のみ表示中。解除するとすべて表示されます)</span>
+    <span id="bookmarkOnlyToggle" class="new-only-toggle">
+      🔖 ブックマークのみ表示
+      <span class="new-only-switch"><span class="new-only-switch-knob"></span></span>
+    </span>
   </div>
   <div class="chip-row" id="fieldChips"></div>
   <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
@@ -896,6 +908,12 @@
 <div class="toolbar" id="academicToolbar" style="display:none;">
   <div class="search-row">
     <input class="search-input" id="academicSearchInput" type="text" placeholder="🔍 キーワードで検索(タイトル・要約)">
+  </div>
+  <div style="display:flex; align-items:center; gap:16px; margin-bottom:10px;">
+    <span id="bookmarkOnlyToggleAcademic" class="new-only-toggle">
+      🔖 ブックマークのみ表示
+      <span class="new-only-switch"><span class="new-only-switch-knob"></span></span>
+    </span>
   </div>
   <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
     <span style="font-size:12px; color:#8A95A0; flex-shrink:0;">テーマ:</span>
@@ -1167,7 +1185,8 @@ function render() {
     const matchesMonth = activeMonth === "すべて" || itemMonthLabel(item.date) === activeMonth;
     const matchesQuery = !q || item.title.toLowerCase().includes(q) || item.summary.toLowerCase().includes(q);
     const matchesNewOnly = !showNewOnly || isNewItem(item.date);
-    return matchesField && matchesDepartment && matchesImportance && matchesRegion && matchesMonth && matchesQuery && matchesNewOnly;
+    const matchesBookmark = !showBookmarkedOnly || !!bookmarkState[item.id];
+    return matchesField && matchesDepartment && matchesImportance && matchesRegion && matchesMonth && matchesQuery && matchesNewOnly && matchesBookmark;
   });
 
   document.getElementById("countLine").textContent = `${filtered.length}件表示中(全${DATA.length}件)`;
@@ -1188,7 +1207,10 @@ function render() {
         ${item.status === "判定待ち"
           ? `<span class="pending-tag">⏳ 判定待ち(翌朝までに自動分類されます)</span>`
           : `<span class="field-tag" style="${fieldTagStyle(item.field)}">${item.field}</span>`}
-        <span class="edit-toggle-btn" data-edit-id="${item.id}" title="編集">✏️</span>
+        <div class="card-top-right">
+          <span class="bookmark-btn ${bookmarkState[item.id] ? "active" : ""}" data-id="${item.id}" title="ブックマーク">${bookmarkState[item.id] ? "🔖" : "📑"}</span>
+          <span class="edit-toggle-btn" data-edit-id="${item.id}" title="編集">✏️</span>
+        </div>
       </div>
       <div class="card-top-row2">
         <div class="hashtag-row">
@@ -1251,6 +1273,10 @@ function render() {
       const body = grid.querySelector(`.reason-body[data-reason-body-id="${toggle.dataset.reasonId}"]`);
       body.style.display = body.style.display === "none" ? "block" : "none";
     });
+  });
+
+  grid.querySelectorAll(".bookmark-btn").forEach(btn => {
+    btn.addEventListener("click", () => onBookmarkClick(btn));
   });
 
   grid.querySelectorAll(".edit-toggle-btn").forEach(btn => {
@@ -1391,6 +1417,33 @@ let savedAuthorName = localStorage.getItem("artKbAuthorName") || "";
 // { "記事ID": true } の形でブラウザに保存(「この判定に違和感」の記録状態)
 let flagState = JSON.parse(localStorage.getItem("artKbFlags") || "{}");
 
+// { "記事ID": true } の形でブラウザに保存(個人のブックマーク。ログイン不要、このブラウザだけで有効)
+let bookmarkState = JSON.parse(localStorage.getItem("artKbBookmarks") || "{}");
+let showBookmarkedOnly = false;
+let showBookmarkedOnlyAcademic = false;
+
+function onBookmarkClick(btn) {
+  const id = btn.dataset.id;
+  if (bookmarkState[id]) {
+    delete bookmarkState[id];
+  } else {
+    bookmarkState[id] = true;
+  }
+  localStorage.setItem("artKbBookmarks", JSON.stringify(bookmarkState));
+  render();
+}
+
+function onBookmarkClickAcademic(btn) {
+  const id = btn.dataset.id;
+  if (bookmarkState[id]) {
+    delete bookmarkState[id];
+  } else {
+    bookmarkState[id] = true;
+  }
+  localStorage.setItem("artKbBookmarks", JSON.stringify(bookmarkState));
+  renderAcademicTab();
+}
+
 function onFlagClick(btn) {
   const id = btn.dataset.id;
   const newState = !flagState[id];
@@ -1428,6 +1481,20 @@ document.getElementById("newOnlyToggle").addEventListener("click", () => {
   const el = document.getElementById("newOnlyToggle");
   el.classList.toggle("active", showNewOnly);
   render();
+});
+
+document.getElementById("bookmarkOnlyToggle").addEventListener("click", () => {
+  showBookmarkedOnly = !showBookmarkedOnly;
+  const el = document.getElementById("bookmarkOnlyToggle");
+  el.classList.toggle("active", showBookmarkedOnly);
+  render();
+});
+
+document.getElementById("bookmarkOnlyToggleAcademic").addEventListener("click", () => {
+  showBookmarkedOnlyAcademic = !showBookmarkedOnlyAcademic;
+  const el = document.getElementById("bookmarkOnlyToggleAcademic");
+  el.classList.toggle("active", showBookmarkedOnlyAcademic);
+  renderAcademicTab();
 });
 
 document.getElementById("addNewsBtn").addEventListener("click", () => {
@@ -1669,7 +1736,8 @@ function renderAcademicTab() {
     const title = (p["タイトル"] || "").toLowerCase();
     const summary = (p["要約"] || "").toLowerCase();
     const matchesQuery = !q || title.includes(q) || summary.includes(q);
-    return matchesTheme && matchesImportance && matchesRegion && matchesMonth && matchesQuery;
+    const matchesBookmark = !showBookmarkedOnlyAcademic || !!bookmarkState["paper:" + p["PMID"]];
+    return matchesTheme && matchesImportance && matchesRegion && matchesMonth && matchesQuery && matchesBookmark;
   });
 
   document.getElementById("academicCountLine").textContent = `${filtered.length}件表示中(全${PAPERS.length}件)`;
@@ -1685,7 +1753,10 @@ function renderAcademicTab() {
     <div class="card">
       <div class="card-top">
         <span class="field-tag" style="border-left-color:#6D4AA8;color:#6D4AA8;">学術研究</span>
-        <span class="edit-toggle-btn" title="PMID: ${escapeHtml(p["PMID"])}">🔬</span>
+        <div class="card-top-right">
+          <span class="bookmark-btn-academic ${bookmarkState["paper:" + p["PMID"]] ? "active" : ""}" data-id="paper:${escapeHtml(p["PMID"])}" title="ブックマーク">${bookmarkState["paper:" + p["PMID"]] ? "🔖" : "📑"}</span>
+          <span class="edit-toggle-btn" title="PMID: ${escapeHtml(p["PMID"])}">🔬</span>
+        </div>
       </div>
       <div class="card-top-row2">
         <div class="hashtag-row">
@@ -1706,6 +1777,10 @@ function renderAcademicTab() {
       </div>
     </div>
   `).join("");
+
+  grid.querySelectorAll(".bookmark-btn-academic").forEach(btn => {
+    btn.addEventListener("click", () => onBookmarkClickAcademic(btn));
+  });
 }
 
 document.getElementById("academicSearchInput").addEventListener("input", (e) => {
