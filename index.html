@@ -1,2073 +1,2152 @@
-/**
- * ARTナレッジベース Web App
- * スプレッドシートを簡易APIとして公開する
- */
-
-const SHEET_ID = '1lFnk8GG1q_3r-QOQe1OIMkskh4DG26QnCkOpaoSCi3k';
-const SHEET_NAME = 'ARTナレッジベース';
-
-const COLUMNS = [
-  'ID', 'タイトル', '分野', 'ソース種別', '投稿者',
-  '元URL', '公開日', '登録日時', '重要度', 'ステータス', '要約', '国', '部門', '判定理由'
-];
-
-const DEPARTMENTS = ['開発', '臨床開発', '品質保証', '薬事', '事業開発'];
-
-/**
- * スプレッドシートのセル値が(自動認識により)Dateオブジェクトになっている場合、
- * 見やすい文字列(yyyy-MM-dd HH:mm)に整形する。すでに文字列ならそのまま返す。
- */
-function formatCellValue(value) {
-  if (value instanceof Date) {
-    return Utilities.formatDate(value, 'Asia/Tokyo', 'yyyy-MM-dd HH:mm');
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARTナレッジベース</title>
+<style>
+  :root {
+    --navy: #1F3A52;
+    --blue: #365D81;
+    --blue-soft: #E8EEF3;
+    --gray-body: #55606B;
+    --gray-line: #DDE3E8;
+    --bg: #FAFBFC;
+    --white: #FFFFFF;
+    --red: #B23A3A;
+    --amber: #C08A2E;
+    --green: #3D7A54;
   }
-  return value;
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Yu Gothic UI", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+    color: #33393F;
+    font-size: 15.5px;
+    line-height: 1.8;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Header */
+  .header {
+    background: var(--white);
+    border-bottom: 1px solid var(--gray-line);
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .header-left { display: flex; align-items: baseline; gap: 12px; }
+  .header-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--navy);
+    letter-spacing: 0.02em;
+  }
+  .header-sub {
+    font-size: 12px;
+    color: #8A95A0;
+  }
+  .badge-confidential {
+    border: 1px solid var(--red);
+    color: var(--red);
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+  }
+
+  /* Toolbar */
+  .toolbar {
+    padding: 20px 32px 0;
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+  .search-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .search-input {
+    flex: 1;
+    padding: 11px 16px;
+    border: 1px solid var(--gray-line);
+    border-radius: 8px;
+    font-size: 14px;
+    background: var(--white);
+    color: var(--navy);
+  }
+  .search-input:focus {
+    outline: none;
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px var(--blue-soft);
+  }
+  .new-only-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #55606B;
+    cursor: pointer;
+    user-select: none;
+  }
+  .new-only-switch {
+    display: inline-flex;
+    align-items: center;
+    width: 36px;
+    height: 20px;
+    border-radius: 999px;
+    background: #C7CDD3;
+    padding: 2px;
+    transition: background 0.15s ease;
+    flex-shrink: 0;
+  }
+  .new-only-switch-knob {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--white);
+    transition: margin-left 0.15s ease;
+  }
+  .new-only-toggle.active .new-only-switch {
+    background: #1D8348;
+  }
+  .new-only-toggle.active .new-only-switch-knob {
+    margin-left: 16px;
+  }
+  .add-news-btn {
+    padding: 9px 28px;
+    border: none;
+    background: var(--blue);
+    color: var(--white);
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .add-news-btn:hover { background: var(--blue-dark); }
+  .add-news-callout {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border: 1px dashed #B7C0C7;
+    border-radius: 10px;
+    padding: 10px 16px;
+    margin-top: 4px;
+    margin-bottom: 16px;
+    width: fit-content;
+  }
+  .add-news-callout-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .add-news-callout-icon {
+    font-size: 22px;
+  }
+  .add-news-callout-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--navy);
+  }
+  .add-news-callout-sub {
+    font-size: 11px;
+    color: #8A95A0;
+  }
+  .add-news-form {
+    background: var(--white);
+    border: 1px solid var(--gray-line);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .form-row {
+    display: flex;
+    gap: 8px;
+  }
+  .form-row input, .form-row select, .add-news-form textarea {
+    flex: 1;
+    padding: 9px 12px;
+    border: 1px solid var(--gray-line);
+    border-radius: 7px;
+    font-size: 13.5px;
+    font-family: inherit;
+  }
+  .add-news-submit-btn {
+    padding: 9px 20px;
+    border: none;
+    background: var(--navy);
+    color: var(--white);
+    border-radius: 7px;
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .form-note {
+    font-size: 12px;
+    color: var(--blue);
+    min-height: 16px;
+  }
+  .chip-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+  .chip {
+    padding: 6px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--gray-line);
+    background: var(--white);
+    font-size: 13px;
+    color: var(--gray-body);
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.15s ease;
+  }
+  .chip:hover { border-color: var(--blue); }
+  .chip.active {
+    background: var(--blue);
+    border-color: var(--blue);
+    color: var(--white);
+  }
+  .region-chip {
+    padding: 4px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--gray-line);
+    background: var(--white);
+    font-size: 12px;
+    color: #9AA3AB;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.15s ease;
+  }
+  .region-chip:hover { border-color: #B8C0C7; color: #6B7580; }
+  .region-chip.active {
+    background: #F1F3F5;
+    border-color: #C7CDD3;
+    color: #4A5158;
+    font-weight: 600;
+  }
+  .count-line-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 14px 2px 4px;
+  }
+  .count-line {
+    font-size: 12px;
+    color: #8A95A0;
+  }
+  .report-link {
+    font-size: 12px;
+    color: var(--blue);
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .report-link:hover { text-decoration: underline; }
+
+  /* Cards */
+  .grid {
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 0 32px 60px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 16px;
+  }
+  .card {
+    background: var(--white);
+    border: 1px solid var(--gray-line);
+    border-radius: 10px;
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .field-tag {
+    font-size: 13px;
+    font-weight: 700;
+    padding: 3px 0 3px 10px;
+    border-left: 4px solid;
+    white-space: nowrap;
+    line-height: 1.3;
+    background: none;
+  }
+  .region-tag {
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    color: #6B7580;
+  }
+  .region-tag::before {
+    content: "#";
+    color: #B7BEC4;
+  }
+  .pending-tag {
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: #FAEEDA;
+    color: #633806;
+  }
+  .new-badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    background: var(--red);
+    padding: 4px 12px 4px 16px;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+    clip-path: polygon(0 50%, 10px 0, 100% 0, 100% 100%, 10px 100%);
+  }
+  .card-top-right {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .card-top-row2 {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .hashtag-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .card-title {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--navy);
+    line-height: 1.5;
+  }
+  .card-title a { color: inherit; text-decoration: none; }
+  .card-title a:hover { text-decoration: underline; }
+
+  .card-summary {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 13px;
+    line-height: 1.75;
+    color: var(--gray-body);
+  }
+
+  .meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    border-top: 1px solid var(--gray-line);
+    padding-top: 10px;
+    margin-top: 2px;
+  }
+  .meta-row-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .source-badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 5px;
+    background: #F1F3F5;
+    color: #6B7580;
+  }
+  .importance-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 5px;
+  }
+  .importance-badge.importance-high { background: #FAECE7; color: #C0392B; }
+  .importance-badge.importance-mid { background: #FDEEDC; color: #B9660B; }
+  .importance-badge.importance-low { background: #F1F3F5; color: #6B7580; }
+  .reason-toggle {
+    font-size: 11.5px;
+    color: var(--blue);
+    cursor: pointer;
+    user-select: none;
+  }
+  .reason-toggle:hover { text-decoration: underline; }
+  .reason-body {
+    font-size: 12px;
+    color: var(--gray-body);
+    background: var(--bg);
+    border-radius: 6px;
+    padding: 8px 10px;
+    line-height: 1.6;
+  }
+  .flag-btn {
+    padding: 3px 10px;
+    border: 1px solid var(--gray-line);
+    border-radius: 5px;
+    background: var(--white);
+    color: #8A95A0;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .flag-btn:hover { border-color: #C0392B; color: #C0392B; }
+  .flag-btn.active {
+    border-color: #C0392B;
+    background: #FAECE7;
+    color: #C0392B;
+  }
+  .memo-section {
+    border-top: 1px solid var(--gray-line);
+    padding-top: 12px;
+    margin-top: 2px;
+  }
+  .memo-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-body);
+    margin-bottom: 8px;
+    cursor: pointer;
+  }
+  .memo-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .memo-item {
+    background: var(--bg);
+    border-radius: 6px;
+    padding: 7px 10px;
+  }
+  .memo-item-top {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2px;
+  }
+  .memo-author {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--navy);
+  }
+  .memo-date {
+    font-size: 11px;
+    color: #9AA3AB;
+  }
+  .memo-content {
+    font-size: 12.5px;
+    color: var(--gray-body);
+    line-height: 1.6;
+  }
+  .memo-input-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .memo-input-top-row {
+    display: flex;
+    gap: 6px;
+  }
+  .memo-name-input {
+    width: 110px;
+    flex-shrink: 0;
+    padding: 7px 8px;
+    border: 1px solid var(--gray-line);
+    border-radius: 6px;
+    font-size: 12.5px;
+  }
+  .memo-input {
+    flex: 1;
+    padding: 7px 10px;
+    border: 1px solid var(--gray-line);
+    border-radius: 6px;
+    font-size: 12.5px;
+  }
+  .memo-submit-btn {
+    align-self: flex-end;
+    padding: 7px 16px;
+    border: 1px solid var(--blue);
+    background: var(--blue);
+    color: var(--white);
+    border-radius: 6px;
+    font-size: 12.5px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .memo-submit-btn:hover {
+    background: var(--blue-dark);
+  }
+  .edit-toggle-btn {
+    cursor: pointer;
+    font-size: 13px;
+    padding: 3px;
+    opacity: 0.6;
+  }
+  .edit-toggle-btn:hover { opacity: 1; }
+  .bookmark-btn-full {
+    width: 100%;
+    padding: 8px 0;
+    border: 1px solid var(--gray-line);
+    border-radius: 7px;
+    background: var(--white);
+    color: #8A95A0;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .bookmark-btn-full:hover {
+    border-color: var(--blue);
+    color: var(--blue);
+  }
+  .bookmark-btn-full.active {
+    border-color: #B9660B;
+    background: #FDEEDC;
+    color: #B9660B;
+  }
+  .edit-form {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: var(--bg);
+    border: 1px solid var(--gray-line);
+    border-radius: 8px;
+    padding: 10px;
+  }
+  .edit-form input, .edit-form select, .edit-form textarea {
+    padding: 7px 9px;
+    border: 1px solid var(--gray-line);
+    border-radius: 6px;
+    font-size: 12.5px;
+    font-family: inherit;
+    width: 100%;
+  }
+  .edit-form .form-row {
+    display: flex;
+    gap: 6px;
+  }
+  .edit-form .form-row select, .edit-form .form-row input {
+    flex: 1;
+  }
+  .edit-save-btn {
+    padding: 7px 14px;
+    border: none;
+    border-radius: 6px;
+    background: var(--blue);
+    color: var(--white);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .edit-cancel-btn {
+    padding: 7px 14px;
+    border: 1px solid var(--gray-line);
+    border-radius: 6px;
+    background: var(--white);
+    color: var(--gray-body);
+    font-size: 12.5px;
+    cursor: pointer;
+  }
+
+  .empty-state {
+    max-width: 1120px;
+    margin: 40px auto;
+    text-align: center;
+    color: #9AA3AB;
+    font-size: 14px;
+    padding: 60px 20px;
+  }
+  .loading-state, .error-state {
+    max-width: 1120px;
+    margin: 40px auto;
+    text-align: center;
+    color: #9AA3AB;
+    font-size: 14px;
+    padding: 60px 20px;
+  }
+  .error-state { color: #B23A3A; }
+  .retry-btn {
+    margin-top: 12px;
+    padding: 8px 18px;
+    border: 1px solid var(--blue);
+    color: var(--blue);
+    background: var(--white);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .main-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 0 32px;
+    border-bottom: 1px solid var(--gray-line);
+    background: var(--white);
+  }
+  .main-tab {
+    padding: 12px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #9AA3AB;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    user-select: none;
+  }
+  .main-tab:hover { color: var(--navy); }
+  .main-tab.active {
+    color: var(--navy);
+    border-bottom-color: var(--blue);
+  }
+  .digest-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 32px;
+    display: none;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .digest-card {
+    background: var(--white);
+    border: 1px solid var(--gray-line);
+    border-radius: 10px;
+    padding: 22px 24px;
+  }
+  .digest-card-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .digest-card-title {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--navy);
+  }
+  .digest-date-select {
+    font-size: 12px;
+    padding: 5px 8px;
+    border: 1px solid var(--gray-line);
+    border-radius: 6px;
+    color: var(--gray-body);
+    background: var(--white);
+    flex-shrink: 0;
+  }
+  .digest-card-body {
+    font-size: 14px;
+    line-height: 1.9;
+    color: var(--gray-body);
+    white-space: pre-wrap;
+  }
+  .digest-card-meta {
+    font-size: 11.5px;
+    color: #9AA3AB;
+    margin-top: 14px;
+    border-top: 1px solid var(--gray-line);
+    padding-top: 10px;
+  }
+  .digest-card-meta-toggle {
+    cursor: pointer;
+    user-select: none;
+  }
+  .digest-card-meta-toggle:hover {
+    color: var(--blue);
+  }
+  .digest-toggle-arrow {
+    font-size: 9px;
+  }
+  .digest-article-list {
+    list-style: none;
+    margin: 8px 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .digest-article-list li {
+    font-size: 12.5px;
+    line-height: 1.5;
+  }
+  .digest-article-list li a {
+    color: var(--blue);
+    text-decoration: none;
+  }
+  .digest-article-list li a:hover {
+    text-decoration: underline;
+  }
+  .digest-empty {
+    font-size: 13px;
+    color: #9AA3AB;
+  }
+  .month-summary-panel {
+    background: var(--white);
+    border: 1px solid var(--gray-line);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-top: 4px;
+  }
+  .month-summary-stats {
+    display: flex;
+    gap: 28px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .month-summary-stat-item {
+    font-size: 13px;
+    color: var(--gray-body);
+  }
+  .month-summary-stat-item b {
+    font-size: 16px;
+    color: var(--navy);
+  }
+  .month-summary-gen-btn {
+    padding: 7px 16px;
+    border: 1px solid var(--blue);
+    border-radius: 7px;
+    background: var(--white);
+    color: var(--blue);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .month-summary-gen-btn:hover { background: var(--blue-soft); }
+  .month-summary-text {
+    font-size: 13.5px;
+    line-height: 1.8;
+    color: var(--gray-body);
+    white-space: pre-wrap;
+  }
+  .month-summary-note {
+    font-size: 11px;
+    color: #9AA3AB;
+    margin-top: 8px;
+  }
+  .digest-memo-section {
+    border-top: 1px solid var(--gray-line);
+    margin-top: 16px;
+    padding-top: 14px;
+  }
+  .digest-memo-header {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-body);
+    margin-bottom: 10px;
+  }
+  .digest-memo-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .digest-memo-item {
+    background: var(--bg);
+    border-radius: 6px;
+    padding: 8px 10px;
+  }
+  .digest-memo-item-top {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 3px;
+  }
+  .digest-memo-author {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--navy);
+  }
+  .digest-memo-date {
+    font-size: 11px;
+    color: #9AA3AB;
+  }
+  .digest-memo-content {
+    font-size: 12.5px;
+    color: var(--gray-body);
+    line-height: 1.6;
+  }
+  .digest-memo-input-row {
+    display: flex;
+    gap: 6px;
+  }
+  .digest-memo-name-input {
+    width: 110px;
+    flex-shrink: 0;
+    padding: 7px 8px;
+    border: 1px solid var(--gray-line);
+    border-radius: 6px;
+    font-size: 12.5px;
+  }
+  .digest-memo-input {
+    flex: 1;
+    padding: 7px 10px;
+    border: 1px solid var(--gray-line);
+    border-radius: 6px;
+    font-size: 12.5px;
+  }
+  .digest-memo-submit-btn {
+    padding: 7px 16px;
+    border: none;
+    border-radius: 6px;
+    background: var(--blue);
+    color: var(--white);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .digest-memo-submit-btn:hover { background: var(--blue-dark); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="header-title">ARTナレッジベース</div>
+    <div class="header-sub">ARCS Inc. / 内部参照用プロトタイプ</div>
+  </div>
+  <div style="width:1px;"></div>
+</div>
+
+<div class="main-tabs">
+  <span class="main-tab active" id="tabNews">📰 ニュース一覧</span>
+  <span class="main-tab" id="tabDigest">🧠 AIによる業界動向分析</span>
+  <span class="main-tab" id="tabAcademic">🔬 学術研究</span>
+</div>
+
+<div class="toolbar" id="newsToolbar">
+  <div class="search-row">
+    <input class="search-input" id="searchInput" type="text" placeholder="🔍 キーワードで検索(タイトル・要約)">
+  </div>
+  <div class="add-news-form" id="reportPanel" style="display:none;"></div>
+  <div style="display:flex; align-items:center; gap:16px; margin-bottom:10px; flex-wrap:wrap;">
+    <span id="newOnlyToggle" class="new-only-toggle active">
+      🆕 新着のみ表示
+      <span class="new-only-switch"><span class="new-only-switch-knob"></span></span>
+    </span>
+    <span style="font-size:11.5px; color:#9AA3AB;">(公開から48時間以内の記事のみ表示中。解除するとすべて表示されます)</span>
+    <span id="bookmarkOnlyToggle" class="new-only-toggle">
+      🔖 ブックマークのみ表示
+      <span class="new-only-switch"><span class="new-only-switch-knob"></span></span>
+    </span>
+  </div>
+  <div class="chip-row" id="fieldChips"></div>
+  <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+    <span style="font-size:12px; color:#8A95A0; flex-shrink:0;">部門:</span>
+    <div class="chip-row" id="departmentChips" style="margin-bottom:0;"></div>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+    <span style="font-size:12px; color:#8A95A0; flex-shrink:0;">重要度:</span>
+    <div class="chip-row" id="importanceChips" style="margin-bottom:0;"></div>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+    <span style="font-size:12px; color:#8A95A0; flex-shrink:0;">国:</span>
+    <div class="chip-row" id="regionChips" style="margin-bottom:0;"></div>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+    <span style="font-size:12px; color:#8A95A0; flex-shrink:0;">月:</span>
+    <div class="chip-row" id="monthChips" style="margin-bottom:0;"></div>
+  </div>
+  <div class="month-summary-panel" id="monthSummaryPanel" style="display:none;"></div>
+  <div class="count-line-row">
+    <span class="count-line" id="countLine"></span>
+    <div style="display:flex; gap:16px;">
+      <span class="report-link" id="opinionToggleBtn">💬 ご意見・ご要望を送る</span>
+      <span class="report-link" id="criteriaToggleBtn">ℹ️ 判定基準について</span>
+      <span class="report-link" id="reportToggleBtn">📊 直近の週次レポートを見る →</span>
+    </div>
+  </div>
+  <div style="display:flex; justify-content:flex-end;">
+    <div class="add-news-callout">
+      <div class="add-news-callout-left">
+        <span class="add-news-callout-icon">🔗</span>
+        <div>
+          <div class="add-news-callout-title">手動でニュースを追加</div>
+          <div class="add-news-callout-sub">記事のURLを貼れば手動で追加できます</div>
+        </div>
+      </div>
+      <button class="add-news-btn" id="addNewsBtn">+ 追加する</button>
+    </div>
+  </div>
+  <div class="add-news-form" id="addNewsForm" style="display:none;">
+    <div class="form-row">
+      <input type="text" id="formUrl" placeholder="ニュース記事のURLを貼り付け">
+      <button class="add-news-submit-btn" id="addNewsSubmitBtn">登録する</button>
+    </div>
+    <div class="form-row" id="formFallbackRow" style="display:none;">
+      <input type="text" id="formFallbackTitle" placeholder="タイトルを入力してください">
+    </div>
+    <div style="font-size:11.5px;color:#9AA3AB;">
+      タイトル・分野・重要度・国・要約はAIが翌朝までにまとめて判定します。
+    </div>
+    <div class="form-note" id="formNote"></div>
+  </div>
+  <div class="add-news-form" id="criteriaPanel" style="display:none;"></div>
+  <div class="add-news-form" id="opinionForm" style="display:none;">
+    <textarea id="opinionContent" placeholder="ナレッジベース全体へのご意見・ご要望をお書きください" rows="3"></textarea>
+    <div class="form-row">
+      <input type="text" id="opinionAuthor" placeholder="お名前(任意、空欄で匿名)">
+      <button class="add-news-submit-btn" id="opinionSubmitBtn">送信する</button>
+    </div>
+    <div class="form-note" id="opinionNote"></div>
+  </div>
+</div>
+
+<div class="grid" id="cardGrid"></div>
+<div class="empty-state" id="emptyState" style="display:none;">該当する記事がありません。検索条件を変えてみてください。</div>
+<div class="loading-state" id="loadingState">データを読み込んでいます...</div>
+<div class="error-state" id="errorState" style="display:none;">
+  データの取得に失敗しました。<br>
+  <button class="retry-btn" id="retryBtn">再読み込み</button>
+</div>
+
+<div class="digest-container" id="digestContainer"></div>
+<div class="toolbar" id="academicToolbar" style="display:none;">
+  <div class="search-row">
+    <input class="search-input" id="academicSearchInput" type="text" placeholder="🔍 キーワードで検索(タイトル・要約)">
+  </div>
+  <div style="display:flex; align-items:center; gap:16px; margin-bottom:10px;">
+    <span id="bookmarkOnlyToggleAcademic" class="new-only-toggle">
+      🔖 ブックマークのみ表示
+      <span class="new-only-switch"><span class="new-only-switch-knob"></span></span>
+    </span>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+    <span style="font-size:12px; color:#8A95A0; flex-shrink:0;">テーマ:</span>
+    <div class="chip-row" id="academicThemeChips" style="margin-bottom:0;"></div>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+    <span style="font-size:12px; color:#8A95A0; flex-shrink:0;">重要度:</span>
+    <div class="chip-row" id="academicImportanceChips" style="margin-bottom:0;"></div>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+    <span style="font-size:12px; color:#8A95A0; flex-shrink:0;">国:</span>
+    <div class="chip-row" id="academicRegionChips" style="margin-bottom:0;"></div>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+    <span style="font-size:12px; color:#8A95A0; flex-shrink:0;">月:</span>
+    <div class="chip-row" id="academicMonthChips" style="margin-bottom:0;"></div>
+  </div>
+  <div class="month-summary-panel" id="academicMonthSummaryPanel" style="display:none;"></div>
+  <div class="count-line-row">
+    <span class="count-line" id="academicCountLine"></span>
+  </div>
+  <div style="display:flex; justify-content:flex-end;">
+    <div class="add-news-callout">
+      <div class="add-news-callout-left">
+        <span class="add-news-callout-icon">🔗</span>
+        <div>
+          <div class="add-news-callout-title">手動で論文を追加</div>
+          <div class="add-news-callout-sub">PubMed・Europe PMC・DOIのリンクを貼れば手動で追加できます</div>
+        </div>
+      </div>
+      <button class="add-news-btn" id="addPaperBtn">+ 追加する</button>
+    </div>
+  </div>
+  <div class="add-news-form" id="addPaperForm" style="display:none;">
+    <div class="form-row">
+      <input type="text" id="formPaperUrl" placeholder="論文のURL(PubMed / Europe PMC / DOI)を貼り付け">
+      <button class="add-news-submit-btn" id="addPaperSubmitBtn">登録する</button>
+    </div>
+    <div style="font-size:11.5px;color:#9AA3AB;">
+      重要度・国・部門・要約はAIがその場で判定します。
+    </div>
+    <div class="form-note" id="paperFormNote"></div>
+  </div>
+</div>
+<div class="grid" id="academicGrid" style="display:none;"></div>
+
+<script>
+// GAS Web App のURL(ARTナレッジベース スプレッドシート用API)
+const API_URL = "https://script.google.com/a/macros/arcs-inc.jp/s/AKfycbydHNsQDTKuJHWL8a5I1e5hvO-NyfHVDRk2rsARNZ4-FuNNmQ-2ab1zOviRCvCmLTlcQA/exec";
+
+const IMPORTANCE_MAP = { "高": "high", "中": "mid", "低": "low" };
+
+const FIELDS = ["すべて", "ART/生殖医療テクノロジー動向", "規制・政策動向", "学術研究", "業界動向・統計", "競合動向", "その他"];
+const DEPARTMENTS = ["すべて", "開発", "臨床開発", "品質保証", "薬事", "事業開発"];
+const IMPORTANCE_LEVELS = ["すべて", "高", "中", "低"];
+let REGIONS = ["すべて"];
+// (MONTHSは updateMonthsFromData 内で CURRENT_YEAR_MONTHS / OLDER_MONTHS に分割管理)
+let activeField = "すべて";
+let activeDepartment = "すべて";
+let activeImportance = "すべて";
+let activeRegion = "すべて";
+let activeMonth = "すべて";
+let showNewOnly = true; // 初期表示は新着のみに絞る
+let query = "";
+
+function updateRegionsFromData() {
+  const uniqueRegions = [...new Set(DATA.map(item => item.region).filter(Boolean))];
+  uniqueRegions.sort((a, b) => a.localeCompare(b, "ja")); // あいうえお順
+  REGIONS = ["すべて", ...uniqueRegions];
 }
 
-function doGet(e) {
-  const callback = e && e.parameter && e.parameter.callback;
-
-  // GET経由の手動追加(JSONPでその場で結果を受け取れるようにするため、あえてGETで実装)
-  if (e && e.parameter && e.parameter.action === 'manualAdd') {
-    const result = manualAddByUrl({ url: e.parameter.url, fallbackTitle: e.parameter.fallbackTitle || '' });
-    const resultPayload = JSON.parse(result.getContent());
-    if (callback) {
-      return ContentService
-        .createTextOutput(callback + '(' + JSON.stringify(resultPayload) + ');')
-        .setMimeType(ContentService.MimeType.JAVASCRIPT);
-    }
-    return result;
-  }
-
-  // 月次AI要約(初回のみ生成、以降はキャッシュを返す)
-  if (e && e.parameter && e.parameter.action === 'generateMonthSummary') {
-    const resultPayload = generateMonthSummary(e.parameter.scope, e.parameter.month, e.parameter.checkOnly === 'true');
-    if (callback) {
-      return ContentService
-        .createTextOutput(callback + '(' + JSON.stringify(resultPayload) + ');')
-        .setMimeType(ContentService.MimeType.JAVASCRIPT);
-    }
-    return ContentService.createTextOutput(JSON.stringify(resultPayload)).setMimeType(ContentService.MimeType.JSON);
-  }
-
-  // 論文の手動追加(GET+JSONPでその場で結果を受け取れるようにするため、あえてGETで実装)
-  if (e && e.parameter && e.parameter.action === 'manualAddPaper') {
-    const resultPayload = manualAddPaperByUrl(e.parameter.url);
-    if (callback) {
-      return ContentService
-        .createTextOutput(callback + '(' + JSON.stringify(resultPayload) + ');')
-        .setMimeType(ContentService.MimeType.JAVASCRIPT);
-    }
-    return ContentService.createTextOutput(JSON.stringify(resultPayload)).setMimeType(ContentService.MimeType.JSON);
-  }
-
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
-  const values = sheet.getDataRange().getValues();
-  const rows = values.slice(1);
-
-  const statusColIdx = COLUMNS.indexOf('ステータス');
-  const items = rows
-    .filter(row => row[0] !== '' && row[statusColIdx] !== '対象外')
-    .map(row => {
-      const item = {};
-      COLUMNS.forEach((col, i) => {
-        item[col] = row[i];
-      });
-      return item;
-    });
-
-  const memos = {};
-  const ss = SpreadsheetApp.openById(SHEET_ID);
-  const memoSheet = ss.getSheetByName('メモ');
-  if (memoSheet) {
-    const memoRows = memoSheet.getDataRange().getValues().slice(1);
-    memoRows.forEach(r => {
-      const articleId = String(r[1]);
-      if (!memos[articleId]) memos[articleId] = [];
-      memos[articleId].push({ author: r[2], content: r[3], date: formatCellValue(r[0]) });
-    });
-  }
-
-  // 週次レポート履歴も取得(新しい順)
-  const reports = [];
-  const reportSheet = ss.getSheetByName('週次レポート');
-  if (reportSheet) {
-    const reportRows = reportSheet.getDataRange().getValues().slice(1);
-    reportRows.forEach(r => {
-      reports.push({ sentAt: formatCellValue(r[0]), period: r[1], content: r[2] });
-    });
-    reports.reverse(); // 新しい順にする
-  }
-
-  // 分野別ダイジェスト(全履歴を新しい順に取得。バックナンバー閲覧用)
-  const fieldDigestHistory = {};
-  const digestSheet = ss.getSheetByName('分野レポート');
-  if (digestSheet) {
-    const digestRows = digestSheet.getDataRange().getValues().slice(1);
-    digestRows.forEach(r => {
-      const field = r[1];
-      let articles = [];
-      try {
-        if (r[4]) articles = JSON.parse(r[4]);
-      } catch (e) { /* 旧データ等でJSONが無い/壊れている場合は空配列のまま */ }
-      if (!fieldDigestHistory[field]) fieldDigestHistory[field] = [];
-      fieldDigestHistory[field].push({ generatedAt: formatCellValue(r[0]), content: r[2], articleCount: r[3], articles: articles });
-    });
-    // 各分野内を新しい順に並び替え
-    Object.keys(fieldDigestHistory).forEach(field => {
-      fieldDigestHistory[field].sort((a, b) => new Date(b.generatedAt) - new Date(a.generatedAt));
-    });
-  }
-
-  // 分野別メモも取得
-  const fieldMemos = {};
-  const fieldMemoSheet = ss.getSheetByName('分野メモ');
-  if (fieldMemoSheet) {
-    const fieldMemoRows = fieldMemoSheet.getDataRange().getValues().slice(1);
-    fieldMemoRows.forEach(r => {
-      const field = r[1];
-      if (!fieldMemos[field]) fieldMemos[field] = [];
-      fieldMemos[field].push({ date: formatCellValue(r[0]), author: r[2], content: r[3] });
-    });
-  }
-
-  // 学術研究(PubMed収集分)も取得
-  const papers = [];
-  const academicSheet = ss.getSheetByName(ACADEMIC_SHEET_NAME);
-  if (academicSheet) {
-    const academicRows = academicSheet.getDataRange().getValues().slice(1);
-    academicRows.forEach(row => {
-      if (row[0] === '') return;
-      const paper = {};
-      ACADEMIC_COLUMNS.forEach((col, i) => { paper[col] = row[i]; });
-      papers.push(paper);
-    });
-  }
-
-  const payload = { status: 'ok', count: items.length, items: items, memos: memos, reports: reports, fieldDigestHistory: fieldDigestHistory, fieldMemos: fieldMemos, papers: papers };
-
-  if (callback) {
-    return ContentService
-      .createTextOutput(callback + '(' + JSON.stringify(payload) + ');')
-      .setMimeType(ContentService.MimeType.JAVASCRIPT);
-  }
-
-  return ContentService
-    .createTextOutput(JSON.stringify(payload))
-    .setMimeType(ContentService.MimeType.JSON);
+// 複数国が含まれる場合(例:"デンマーク, アメリカ")は「グローバル」として扱う
+function normalizeRegion(region) {
+  if (!region) return "";
+  const hasMultiple = /[,、]/.test(region) || /[・&]/.test(region);
+  return hasMultiple ? "グローバル" : region.trim();
 }
 
-function doPost(e) {
-  const data = JSON.parse(e.postData.contents);
-
-  if (data.action === 'feedback') {
-    return recordFeedback(data);
-  }
-  if (data.action === 'addMemo') {
-    return addMemo(data);
-  }
-  if (data.action === 'manualAdd') {
-    return manualAddByUrl(data);
-  }
-  if (data.action === 'updateArticle') {
-    return updateArticle(data);
-  }
-  if (data.action === 'flagImportance') {
-    return toggleImportanceFlag(data);
-  }
-  if (data.action === 'generalFeedback') {
-    return recordGeneralFeedback(data);
-  }
-  if (data.action === 'addFieldMemo') {
-    return addFieldMemo(data);
-  }
-
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
-  const existingUrls = sheet.getDataRange().getValues().slice(1).map(row => row[5]);
-  if (data['元URL'] && existingUrls.includes(data['元URL'])) {
-    return ContentService
-      .createTextOutput(JSON.stringify({ status: 'skipped', reason: 'duplicate_url' }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-
-  const lastRow = sheet.getLastRow();
-  const newId = lastRow;
-
-  const newRow = [
-    newId,
-    data['タイトル'] || '',
-    data['分野'] || '',
-    data['ソース種別'] || '',
-    data['投稿者'] || '',
-    data['元URL'] || '',
-    data['公開日'] || '',
-    Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd HH:mm'),
-    data['重要度'] || '中',
-    data['ステータス'] || '未確認',
-    data['要約'] || ''
-  ];
-
-  sheet.appendRow(newRow);
-
-  return ContentService
-    .createTextOutput(JSON.stringify({ status: 'ok', id: newId }))
-    .setMimeType(ContentService.MimeType.JSON);
+// ISO形式の日付文字列を "2026-08-19" のような表示用に整形する
+function formatDisplayDate(dateStr) {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (isNaN(d)) return String(dateStr);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
-/**
- * 手動でニュースを追加する(ページ内容だけ取得し、「判定待ち」状態で仮登録する)
- * AI判定は行わず、翌日の collectNews 実行時にまとめて判定させることで
- * Gemini無料枠の消費を抑える。
- * データ: { action: 'manualAdd', url, fallbackTitle?, fallbackSummary? }
- */
-function manualAddByUrl(data) {
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
-  const url = (data.url || '').trim();
-
-  if (!url) {
-    return ContentService
-      .createTextOutput(JSON.stringify({ status: 'error', reason: 'url_required' }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-
-  const existingUrls = sheet.getDataRange().getValues().slice(1).map(row => normalizeUrl(row[5]));
-  if (existingUrls.includes(normalizeUrl(url))) {
-    return ContentService
-      .createTextOutput(JSON.stringify({ status: 'skipped', reason: 'duplicate_url' }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-
-  // タイトル・概要をページから取得する(この時点ではGeminiは呼ばない)
-  let title = '';
-  let snippet = '';
-  let publishedDate = ''; // 取得できなければ空欄のまま(登録日で埋めるとNEW誤表示の原因になる)
-
-  try {
-    const res = UrlFetchApp.fetch(url, {
-      muteHttpExceptions: true,
-      followRedirects: true,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
-      }
-    });
-    const html = res.getContentText();
-
-    const titleMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i);
-    if (titleMatch) title = decodeHtmlEntities(titleMatch[1].trim());
-
-    const descMatch = html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']*)["']/i)
-      || html.match(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']*)["']/i);
-    if (descMatch) snippet = decodeHtmlEntities(descMatch[1].trim());
-
-    // 公開日をページから取得する(見つからなければ空欄のままにする。今日の日付で埋めるとNEW誤表示の原因になるため)
-    const dateMatch = html.match(/<meta[^>]+property=["']article:published_time["'][^>]+content=["']([^"']*)["']/i)
-      || html.match(/<meta[^>]+name=["']date["'][^>]+content=["']([^"']*)["']/i)
-      || html.match(/<time[^>]+datetime=["']([^"']*)["']/i);
-    if (dateMatch) {
-      const parsedDate = new Date(dateMatch[1]);
-      if (!isNaN(parsedDate)) {
-        publishedDate = Utilities.formatDate(parsedDate, 'Asia/Tokyo', 'yyyy-MM-dd');
-      }
-    }
-  } catch (err) {
-    Logger.log('ページ取得エラー(' + url + '): ' + err);
-  }
-
-  if (!title) {
-    title = (data.fallbackTitle || '').trim();
-  }
-
-  if (!title) {
-    return ContentService
-      .createTextOutput(JSON.stringify({ status: 'error', reason: 'title_not_found' }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-
-  // 「判定待ち」状態で仮登録(分野・重要度・国は空欄のまま)
-  const newId = sheet.getLastRow();
-  const newRow = [
-    newId,
-    title,
-    '', // 分野: 判定待ち
-    '手動追加(URL)',
-    '',
-    url,
-    publishedDate,
-    Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd HH:mm'),
-    '', // 重要度: 判定待ち
-    '判定待ち',
-    snippet, // 要約欄には一旦ページの概要をそのまま入れておく(Gemini判定後に上書きされる)
-    '' // 国: 判定待ち
-  ];
-  sheet.appendRow(newRow);
-
-  return ContentService
-    .createTextOutput(JSON.stringify({ status: 'ok', id: newId, pending: true }))
-    .setMimeType(ContentService.MimeType.JSON);
+function itemMonthLabel(dateStr) {
+  const d = new Date(dateStr);
+  if (isNaN(d)) return null;
+  return `${d.getFullYear()}年${d.getMonth() + 1}月`;
 }
 
-function decodeHtmlEntities(str) {
-  return str
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'");
-}
+let CURRENT_YEAR_MONTHS = ["すべて"];
+let OLDER_MONTHS = [];
+let showOlderMonths = false;
+let showOlderAcademicMonths = false;
 
-/**
- * 既存記事を編集する(手動追加・自動収集どちらの記事も編集可能)
- * データ: { action: 'updateArticle', id, title, url, field, country, importance, summary }
- */
-function updateArticle(data) {
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
-  const values = sheet.getDataRange().getValues();
-
-  let targetRowIndex = -1;
-  for (let i = 1; i < values.length; i++) {
-    if (String(values[i][0]) === String(data.id)) {
-      targetRowIndex = i + 1; // シートは1始まり
-      break;
-    }
-  }
-
-  if (targetRowIndex === -1) {
-    return ContentService
-      .createTextOutput(JSON.stringify({ status: 'error', reason: 'not_found' }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-
-  // B列(タイトル)〜: 送られてきた値だけ更新する(空欄で送られた項目は既存値を維持)
-  const colMap = {
-    title: 2, field: 3, url: 6, country: 12, importance: 9, summary: 11
+function updateMonthsFromData() {
+  const uniqueMonths = [...new Set(DATA.map(item => itemMonthLabel(item.date)).filter(Boolean))];
+  const parse = (s) => {
+    const m = s.match(/(\d+)年(\d+)月/);
+    return m ? { year: parseInt(m[1]), month: parseInt(m[2]) } : { year: 0, month: 0 };
   };
-  if (data.title !== undefined) sheet.getRange(targetRowIndex, colMap.title).setValue(data.title);
-  if (data.field !== undefined) sheet.getRange(targetRowIndex, colMap.field).setValue(data.field);
-  if (data.url !== undefined) sheet.getRange(targetRowIndex, colMap.url).setValue(data.url);
-  if (data.country !== undefined) sheet.getRange(targetRowIndex, colMap.country).setValue(data.country);
-  if (data.importance !== undefined) sheet.getRange(targetRowIndex, colMap.importance).setValue(data.importance);
-  if (data.summary !== undefined) sheet.getRange(targetRowIndex, colMap.summary).setValue(data.summary);
-
-  return ContentService
-    .createTextOutput(JSON.stringify({ status: 'ok' }))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-function addMemo(data) {
-  const ss = SpreadsheetApp.openById(SHEET_ID);
-  let memoSheet = ss.getSheetByName('メモ');
-  if (!memoSheet) {
-    memoSheet = ss.insertSheet('メモ');
-    memoSheet.appendRow(['日時', '記事ID', '投稿者', '内容']);
-  }
-  memoSheet.appendRow([
-    Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd HH:mm'),
-    data.id || '',
-    data.author || '匿名',
-    data.content || ''
-  ]);
-  return ContentService
-    .createTextOutput(JSON.stringify({ status: 'ok' }))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-/**
- * 「この判定に違和感」ボタンのトグル記録
- * データ: { action: 'flagImportance', id, title, field, importance }
- * 同じ記事IDが既にあれば行を削除(取り消し)、なければ追加する
- */
-function toggleImportanceFlag(data) {
-  const ss = SpreadsheetApp.openById(SHEET_ID);
-  let reviewSheet = ss.getSheetByName('判定精度レビュー');
-  if (!reviewSheet) {
-    reviewSheet = ss.insertSheet('判定精度レビュー');
-    reviewSheet.appendRow(['記録日時', '記事ID', 'タイトル', '分野', '重要度']);
-  }
-
-  const rows = reviewSheet.getDataRange().getValues();
-  let existingRowIndex = -1;
-  for (let i = 1; i < rows.length; i++) {
-    if (String(rows[i][1]) === String(data.id)) {
-      existingRowIndex = i + 1; // シートは1始まり
-      break;
-    }
-  }
-
-  if (existingRowIndex > -1) {
-    reviewSheet.deleteRow(existingRowIndex);
-    return ContentService
-      .createTextOutput(JSON.stringify({ status: 'ok', flagged: false }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-
-  reviewSheet.appendRow([
-    Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd HH:mm'),
-    data.id || '',
-    data.title || '',
-    data.field || '',
-    data.importance || ''
-  ]);
-  return ContentService
-    .createTextOutput(JSON.stringify({ status: 'ok', flagged: true }))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-/**
- * サイト全体への意見・要望を記録する(特定の記事に紐付かない)
- * データ: { action: 'generalFeedback', content, author }
- */
-/**
- * 「AIによる業界動向分析」タブの、分野ごとのメモを記録する
- * データ: { action: 'addFieldMemo', field, author, content }
- */
-function addFieldMemo(data) {
-  const ss = SpreadsheetApp.openById(SHEET_ID);
-  let memoSheet = ss.getSheetByName('分野メモ');
-  if (!memoSheet) {
-    memoSheet = ss.insertSheet('分野メモ');
-    memoSheet.appendRow(['日時', '分野', '投稿者', '内容']);
-  }
-  memoSheet.appendRow([
-    Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd HH:mm'),
-    data.field || '',
-    data.author || '匿名',
-    data.content || ''
-  ]);
-  return ContentService
-    .createTextOutput(JSON.stringify({ status: 'ok' }))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-function recordGeneralFeedback(data) {
-  const ss = SpreadsheetApp.openById(SHEET_ID);
-  let opinionSheet = ss.getSheetByName('全体意見');
-  if (!opinionSheet) {
-    opinionSheet = ss.insertSheet('全体意見');
-    opinionSheet.appendRow(['記録日時', '投稿者', '内容']);
-  }
-  opinionSheet.appendRow([
-    Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd HH:mm'),
-    data.author || '匿名',
-    data.content || ''
-  ]);
-  return ContentService
-    .createTextOutput(JSON.stringify({ status: 'ok' }))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-function recordFeedback(data) {
-  const ss = SpreadsheetApp.openById(SHEET_ID);
-  let fbSheet = ss.getSheetByName('フィードバック');
-  if (!fbSheet) {
-    fbSheet = ss.insertSheet('フィードバック');
-    fbSheet.appendRow(['記録日時', '記事ID', 'タイトル', '分野', '種類']);
-  }
-  fbSheet.appendRow([
-    Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd HH:mm'),
-    data.id || '',
-    data.title || '',
-    data.field || '',
-    data.type || ''
-  ]);
-  return ContentService
-    .createTextOutput(JSON.stringify({ status: 'ok' }))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-/* ==========================================================
- * Web検索(Google News RSS)収集 + Gemini要約・タグ付け + 自動登録
- * ========================================================== */
-
-const QUERY_SETS = {
-  'ART/生殖医療テクノロジー動向': [
-    '自動化 IVF', 'AI 卵子凍結', '精子選別 AI', '胚培養 タイムラプス',
-    'ICSI ロボット', '顕微授精 自動化', '胚移植 AI', '卵子凍結 経済的保証',
-    '不妊治療 AI 共同開発', '精子バンク'
-  ],
-  '規制・政策動向': [
-    'PMDA 医療機器 AI', '生殖補助医療 法案', 'AI医療機器協議会', 'こども家庭庁 不妊治療',
-    '先進医療 不妊治療', '先進医療 ART', '不妊治療 保険適用', 'SaMD 承認',
-    '医療データ 二次利用'
-  ],
-  // 学術研究はGoogle Newsでは網羅性が弱いため廃止。PubMed(collectAcademicPapers)に一本化(2026年8月28日)
-  '業界動向・統計': [
-    '不妊治療 市場規模', 'femtech 資金調達', 'Medtec Japan', '出生数 統計',
-    'fertility clinic funding', 'ART市場 予測', '少子化対策',
-    'ARTデータブック 日本産科婦人科学会', '卵子凍結 福利厚生'
-  ],
-  '競合動向': [
-    'Overture Life ICSI', 'Conceivable Life Sciences IVF', 'BAIBYS sperm', 'VitruvianMD sperm DNA', 'IVF2.0 SiD sperm ranking',
-    'NeoGenix Fertility', 'Fertilis microICSI', 'BetterFit ICSI', 'Optimaton.ai', 'SpOvum RoboICSI', 'Fertsy IVF'
-  ]
-};
-
-/**
- * 手動追加で「判定待ち」のまま溜まっている記事を、Geminiでまとめて判定して更新する
- */
-function processPendingManualAdds(sheet) {
-  const values = sheet.getDataRange().getValues();
-  const statusColIndex = COLUMNS.indexOf('ステータス');
-  const fieldColIndex = COLUMNS.indexOf('分野');
-  const importanceColIndex = COLUMNS.indexOf('重要度');
-  const summaryColIndex = COLUMNS.indexOf('要約');
-  const countryColIndex = COLUMNS.indexOf('国');
-  const departmentColIndex = COLUMNS.indexOf('部門');
-  const reasonColIndex = COLUMNS.indexOf('判定理由');
-
-  const pending = [];
-  for (let i = 1; i < values.length; i++) {
-    const row = values[i];
-    if (row[0] === '') continue;
-    if (row[statusColIndex] === '判定待ち') {
-      pending.push({ rowIndex: i + 1, title: row[1], snippet: row[summaryColIndex] });
-    }
-  }
-
-  if (pending.length === 0) return;
-  Logger.log('判定待ちの手動追加記事: ' + pending.length + '件');
-
-  const BATCH_SIZE = 10;
-  for (let i = 0; i < pending.length; i += BATCH_SIZE) {
-    const batch = pending.slice(i, i + BATCH_SIZE);
-    const judgedList = judgeBatchWithGemini(batch, 'manual');
-
-    if (!judgedList || judgedList.length !== batch.length) {
-      Logger.log('判定待ち記事のバッチ処理に失敗(件数不一致 or エラー)。次回に持ち越します。');
-      continue;
-    }
-
-    batch.forEach((item, idx) => {
-      const judged = judgedList[idx];
-      if (!judged) return;
-
-      sheet.getRange(item.rowIndex, fieldColIndex + 1).setValue(judged.分野 || 'その他');
-      sheet.getRange(item.rowIndex, importanceColIndex + 1).setValue(judged.重要度 || '中');
-      sheet.getRange(item.rowIndex, countryColIndex + 1).setValue(judged.国 || '');
-      sheet.getRange(item.rowIndex, departmentColIndex + 1).setValue(Array.isArray(judged.部門) ? judged.部門.join(', ') : '');
-      sheet.getRange(item.rowIndex, summaryColIndex + 1).setValue(judged.要約 || item.snippet);
-      sheet.getRange(item.rowIndex, reasonColIndex + 1).setValue(judged.判定理由 || '');
-      sheet.getRange(item.rowIndex, statusColIndex + 1).setValue('未確認');
-    });
-
-    Utilities.sleep(2000);
-  }
-}
-
-/**
- * 全分野を対象に、日付制限なしでまとめて収集する(拡張クエリの網羅性確認・過去の漏れ確認用)
- * 通常のcollectNewsとは独立しており、LAST_RUN_DATEには影響しない
- */
-function collectAllNewsBackfill() {
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
-  const existing = sheet.getDataRange().getValues().slice(1);
-  const existingUrls = new Set(existing.map(r => normalizeUrl(r[5])));
-  const existingTitles = existing.map(r => ({ title: r[1], date: r[6] }));
-
-  const candidates = [];
-  Object.keys(QUERY_SETS).forEach(field => {
-    QUERY_SETS[field].forEach(query => {
-      const articles = fetchGoogleNewsRss(query, null, 15); // sinceDate=null → 日付制限なし
-      articles.forEach(article => {
-        const normUrl = normalizeUrl(article.url);
-        if (existingUrls.has(normUrl)) return;
-        if (isSimilarTitleExists(article.title, article.pubDate, existingTitles)) return;
-        if (candidates.some(c => normalizeUrl(c.url) === normUrl)) return;
-
-        candidates.push(article);
-        existingUrls.add(normUrl);
-        existingTitles.push({ title: article.title, date: article.pubDate });
-      });
-    });
+  // 新しい月が先頭に来るように、実際の年月値で降順ソート
+  uniqueMonths.sort((a, b) => {
+    const pa = parse(a), pb = parse(b);
+    return (pb.year * 100 + pb.month) - (pa.year * 100 + pa.month);
   });
 
-  Logger.log('全分野バックフィル 候補記事数: ' + candidates.length);
+  const thisYear = new Date().getFullYear();
+  const currentYear = uniqueMonths.filter(m => parse(m).year === thisYear);
+  const older = uniqueMonths.filter(m => parse(m).year !== thisYear);
 
-  const BATCH_SIZE = 10;
-  let addedCount = 0;
+  CURRENT_YEAR_MONTHS = ["すべて", ...currentYear];
+  OLDER_MONTHS = older;
+}
+let DATA = [];
+let MEMOS = {};
+let REPORTS = []; // { "記事ID": [{author, content, date}, ...] }
+let FIELD_DIGEST_HISTORY = {}; // { "分野名": [{generatedAt, content, articleCount, articles}, ...] } 新しい順
+let digestSelectedIndex = {}; // { "分野名": 選択中のインデックス(0=最新) }
+let FIELD_MEMOS = {}; // { "分野名": [{date, author, content}, ...] }
+let PAPERS = []; // PubMedから収集した論文一覧
+let academicQuery = "";
+let academicActiveTheme = "すべて";
+let academicActiveImportance = "すべて";
+let academicActiveRegion = "すべて";
+let academicActiveMonth = "すべて";
 
-  for (let i = 0; i < candidates.length; i += BATCH_SIZE) {
-    const batch = candidates.slice(i, i + BATCH_SIZE);
-    const judgedList = judgeBatchWithGemini(batch);
-    if (!judgedList || judgedList.length !== batch.length) {
-      Logger.log('全分野バックフィル: バッチ判定失敗、スキップ');
-      continue;
+// GAS Web AppはCORSに対応していないため、<script>タグを使うJSONP方式でデータを取得する
+function loadData() {
+  document.getElementById("loadingState").style.display = "block";
+  document.getElementById("errorState").style.display = "none";
+  document.getElementById("cardGrid").innerHTML = "";
+  document.getElementById("emptyState").style.display = "none";
+
+  const callbackName = "artKbCallback_" + Date.now();
+  let settled = false;
+
+  const timeoutId = setTimeout(() => {
+    if (!settled) {
+      settled = true;
+      handleLoadError(new Error("タイムアウト"));
     }
-
-    batch.forEach((article, idx) => {
-      const judged = judgedList[idx];
-      if (!judged || judged.分野 === '対象外') return;
-
-      const newRow = [
-        sheet.getLastRow(),
-        article.title,
-        judged.分野,
-        'Web検索(自動収集)',
-        '',
-        article.url,
-        article.pubDate,
-        Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd HH:mm'),
-        judged.重要度,
-        '未確認',
-        judged.要約,
-        judged.国 || '',
-        Array.isArray(judged.部門) ? judged.部門.join(', ') : '',
-        judged.判定理由 || ''
-      ];
-      sheet.appendRow(newRow);
-      addedCount++;
-    });
-
-    Utilities.sleep(2000);
-  }
-
-  Logger.log('全分野バックフィル完了 → 追加件数: ' + addedCount);
-}
-
-/**
- * 「競合動向」だけを対象に、日付制限なしでまとめて収集する(初回の遡及取得用)
- * 通常のcollectNewsとは独立しており、LAST_RUN_DATEには影響しない
- */
-function collectCompetitorNewsBackfill() {
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
-  const existing = sheet.getDataRange().getValues().slice(1);
-  const existingUrls = new Set(existing.map(r => normalizeUrl(r[5])));
-  const existingTitles = existing.map(r => ({ title: r[1], date: r[6] }));
-
-  const candidates = [];
-  QUERY_SETS['競合動向'].forEach(query => {
-    const articles = fetchGoogleNewsRss(query, null, 20); // sinceDate=null → 日付制限なし、最大20件
-    articles.forEach(article => {
-      const normUrl = normalizeUrl(article.url);
-      if (existingUrls.has(normUrl)) return;
-      if (isSimilarTitleExists(article.title, article.pubDate, existingTitles)) return;
-      if (candidates.some(c => normalizeUrl(c.url) === normUrl)) return;
-
-      candidates.push(article);
-      existingUrls.add(normUrl);
-      existingTitles.push({ title: article.title, date: article.pubDate });
-    });
-  });
-
-  Logger.log('競合動向 候補記事数: ' + candidates.length);
-
-  const BATCH_SIZE = 10;
-  let addedCount = 0;
-
-  for (let i = 0; i < candidates.length; i += BATCH_SIZE) {
-    const batch = candidates.slice(i, i + BATCH_SIZE);
-    const judgedList = judgeBatchWithGemini(batch);
-    if (!judgedList || judgedList.length !== batch.length) {
-      Logger.log('競合動向バックフィル: バッチ判定失敗、スキップ');
-      continue;
-    }
-
-    batch.forEach((article, idx) => {
-      const judged = judgedList[idx];
-      if (!judged || judged.分野 === '対象外') return;
-
-      const newRow = [
-        sheet.getLastRow(),
-        article.title,
-        judged.分野,
-        'Web検索(自動収集)',
-        '',
-        article.url,
-        article.pubDate,
-        Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd HH:mm'),
-        judged.重要度,
-        '未確認',
-        judged.要約,
-        judged.国 || '',
-        Array.isArray(judged.部門) ? judged.部門.join(', ') : '',
-        judged.判定理由 || ''
-      ];
-      sheet.appendRow(newRow);
-      addedCount++;
-    });
-
-    Utilities.sleep(2000);
-  }
-
-  Logger.log('競合動向バックフィル完了 → 追加件数: ' + addedCount);
-}
-
-/* ==========================================================
- * 学術研究(PubMed)収集パイプライン
- * Google News RSSは論文の網羅性が弱いため、学術研究分野はPubMedに一本化(2026年8月28日)
- * ニュース一覧タブとは別に、「学術研究」専用シート・タブで管理する
- * ========================================================== */
-
-const ACADEMIC_SHEET_NAME = '学術研究';
-const ACADEMIC_COLUMNS = [
-  'ID', 'タイトル', 'ジャーナル', '元URL', '公開日', '登録日時',
-  '重要度', 'ステータス', '要約', '国', '部門', '判定理由', 'PMID', 'テーマ'
-];
-
-// クエリ → テーマの対応(部門フィルターより実用的な絞り込み軸として採用)
-const ACADEMIC_QUERY_THEMES = {
-  'robotic ICSI clinical study': 'ICSI・卵子操作の自動化',
-  'Piezo ICSI clinical outcome': 'ICSI・卵子操作の自動化',
-  'automated oocyte denudation IVF': 'ICSI・卵子操作の自動化',
-  'robotic micromanipulation oocyte ICSI': 'ICSI・卵子操作の自動化',
-  'AI sperm selection ICSI': '精子選別・男性因子',
-  'computer vision sperm morphology motility': '精子選別・男性因子',
-  'microfluidic sperm selection ICSI': '精子選別・男性因子',
-  'sperm DNA fragmentation ICSI live birth': '精子選別・男性因子',
-  'AI embryo selection time-lapse live birth': '胚評価AI',
-  'embryo AI external validation multicenter': '胚評価AI',
-  'automated IVF laboratory clinical outcomes': 'IVFラボ全体の自動化'
-};
-
-const ACADEMIC_QUERIES = Object.keys(ACADEMIC_QUERY_THEMES);
-
-/**
- * PubMedから直近の論文を収集し、「学術研究」シートに登録する
- */
-function collectAcademicPapers() {
-  const ss = SpreadsheetApp.openById(SHEET_ID);
-  let sheet = ss.getSheetByName(ACADEMIC_SHEET_NAME);
-  if (!sheet) {
-    sheet = ss.insertSheet(ACADEMIC_SHEET_NAME);
-    sheet.appendRow(ACADEMIC_COLUMNS);
-  }
-
-  const existing = sheet.getDataRange().getValues().slice(1);
-  const existingPmids = new Set(existing.map(r => String(r[12])).filter(Boolean));
-  const existingUrls = new Set(existing.map(r => normalizeUrl(r[3])));
-
-  const candidates = [];
-  ACADEMIC_QUERIES.forEach((query, idx) => {
-    const theme = ACADEMIC_QUERY_THEMES[query] || '';
-
-    const pubmedPapers = fetchPubMedArticles(query, 5);
-    pubmedPapers.forEach(p => {
-      if (!p.pmid || existingPmids.has(p.pmid)) return;
-      if (existingUrls.has(normalizeUrl(p.url))) return;
-      if (candidates.some(c => c.pmid === p.pmid)) return;
-      p.theme = theme;
-      candidates.push(p);
-      existingPmids.add(p.pmid);
-    });
-
-    const europePmcPapers = fetchEuropePmcArticles(query, 5);
-    europePmcPapers.forEach(p => {
-      if (!p.pmid || existingPmids.has(p.pmid)) return; // PubMed収録論文と同じPMIDなら二重登録を防ぐ
-      if (existingUrls.has(normalizeUrl(p.url))) return;
-      if (candidates.some(c => c.pmid === p.pmid)) return;
-      p.theme = theme;
-      candidates.push(p);
-      existingPmids.add(p.pmid);
-    });
-
-    if (idx < ACADEMIC_QUERIES.length - 1) Utilities.sleep(400); // レート制限を避けるため間隔を空ける
-  });
-
-  Logger.log('学術研究(PubMed+Europe PMC) 候補件数: ' + candidates.length);
-
-  const BATCH_SIZE = 5; // 抄録が長く出力が壊れやすいため、ニュースより小さいバッチサイズにする
-  let addedCount = 0;
-
-  for (let i = 0; i < candidates.length; i += BATCH_SIZE) {
-    const batch = candidates.slice(i, i + BATCH_SIZE);
-    const judgedList = judgeAcademicBatch(batch);
-    if (!judgedList || judgedList.length !== batch.length) {
-      Logger.log('学術研究バッチ判定に失敗、スキップ');
-      continue;
-    }
-
-    batch.forEach((paper, idx) => {
-      const judged = judgedList[idx];
-      if (!judged || judged.対象 === false) return;
-
-      const newRow = [
-        sheet.getLastRow(),
-        paper.title,
-        paper.journal,
-        paper.url,
-        paper.pubDate,
-        Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd HH:mm'),
-        judged.重要度 || '中',
-        '未確認',
-        judged.要約 || '',
-        judged.国 || '',
-        Array.isArray(judged.部門) ? judged.部門.join(', ') : '',
-        judged.判定理由 || '',
-        paper.pmid,
-        paper.theme || ''
-      ];
-      sheet.appendRow(newRow);
-      addedCount++;
-    });
-
-    Utilities.sleep(2000);
-  }
-
-  Logger.log('学術研究(PubMed) 収集完了 → 追加件数: ' + addedCount);
-}
-
-/**
- * PubMed E-utilitiesで論文を検索・取得する(APIキー不要)
- */
-function fetchPubMedArticles(query, retmax) {
-  try {
-    const searchUrl = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term='
-      + encodeURIComponent(query) + '&retmax=' + (retmax || 5) + '&sort=date&retmode=json';
-    const searchRes = UrlFetchApp.fetch(searchUrl, { muteHttpExceptions: true });
-    const searchJson = JSON.parse(searchRes.getContentText());
-    const ids = (searchJson.esearchresult && searchJson.esearchresult.idlist) || [];
-    if (ids.length === 0) return [];
-
-    Utilities.sleep(400); // esearchとefetchの間もレート制限を避けるため間隔を空ける
-
-    const fetchUrl = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id='
-      + ids.join(',') + '&rettype=abstract&retmode=xml';
-
-    let xmlText = '';
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      const fetchRes = UrlFetchApp.fetch(fetchUrl, { muteHttpExceptions: true });
-      xmlText = fetchRes.getContentText();
-      if (xmlText && xmlText.trim().indexOf('<') === 0) break; // 正常なXMLの先頭は必ず "<" のはず
-      Logger.log('PubMed efetch応答が不正なため再試行(' + attempt + '/2): ' + query);
-      Utilities.sleep(1000);
-    }
-    if (!xmlText || xmlText.trim().indexOf('<') !== 0) {
-      Logger.log('PubMed efetch応答が不正(リトライ後も失敗): ' + query);
-      return [];
-    }
-
-    const xml = XmlService.parse(xmlText);
-    const root = xml.getRootElement();
-    const articles = root.getChildren('PubmedArticle');
-
-    return articles.map(article => {
-      const medline = article.getChild('MedlineCitation');
-      const pmid = medline.getChild('PMID').getText();
-      const articleEl = medline.getChild('Article');
-      const title = articleEl.getChildText('ArticleTitle') || '';
-      const journalEl = articleEl.getChild('Journal');
-      const journal = journalEl ? (journalEl.getChildText('Title') || '') : '';
-
-      let abstractText = '';
-      const abstractEl = articleEl.getChild('Abstract');
-      if (abstractEl) {
-        abstractText = abstractEl.getChildren('AbstractText').map(t => t.getText()).join(' ');
-      }
-
-      let pubDate = '';
-      try {
-        const pd = journalEl.getChild('JournalIssue').getChild('PubDate');
-        const year = pd.getChildText('Year') || '';
-        const month = pubMedMonthToNum(pd.getChildText('Month'));
-        const day = (pd.getChildText('Day') || '01').padStart(2, '0');
-        if (year) pubDate = year + '-' + month + '-' + day;
-      } catch (e) { /* 日付が取得できない場合は空欄のまま */ }
-
-      return {
-        pmid: pmid,
-        title: title,
-        journal: journal,
-        abstract: abstractText,
-        pubDate: pubDate,
-        url: 'https://pubmed.ncbi.nlm.nih.gov/' + pmid + '/'
-      };
-    });
-  } catch (err) {
-    Logger.log('PubMed取得エラー(' + query + '): ' + err);
-    return [];
-  }
-}
-
-function pubMedMonthToNum(month) {
-  const map = { Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06', Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12' };
-  if (!month) return '01';
-  if (map[month]) return map[month];
-  const n = parseInt(month);
-  return isNaN(n) ? '01' : String(n).padStart(2, '0');
-}
-
-/**
- * Europe PMC REST APIで論文を検索・取得する(APIキー不要)
- * PubMed収録論文と重複した場合に自動で除外できるよう、PMIDが取れる場合はそれをidとして使う。
- * プレプリント等PubMed未収録のものは、Europe PMC独自のID(source+id)を代わりに使う。
- */
-function fetchEuropePmcArticles(query, pageSize) {
-  try {
-    const results = fetchEuropePmcRaw(query, pageSize || 5);
-    return results.map(mapEuropePmcResult);
-  } catch (err) {
-    Logger.log('Europe PMC取得エラー(' + query + '): ' + err);
-    return [];
-  }
-}
-
-function fetchEuropePmcRaw(query, pageSize) {
-  const url = 'https://www.ebi.ac.uk/europepmc/webservices/rest/search?query='
-    + encodeURIComponent(query) + '&format=json&resultType=core&pageSize=' + (pageSize || 5)
-    + '&sort=P_PDATE_D%20desc';
-  const res = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
-  const json = JSON.parse(res.getContentText());
-  return (json.resultList && json.resultList.result) || [];
-}
-
-function mapEuropePmcResult(r) {
-  const id = r.pmid || (r.source && r.id ? (r.source + r.id) : (r.id || ''));
-  const journal = (r.journalInfo && r.journalInfo.journal && r.journalInfo.journal.title) || r.journalTitle || '';
-  const pubDate = r.firstPublicationDate || (r.pubYear ? (r.pubYear + '-01-01') : '');
-  const url = r.pmid
-    ? ('https://pubmed.ncbi.nlm.nih.gov/' + r.pmid + '/')
-    : ('https://europepmc.org/article/' + (r.source || 'MED') + '/' + (r.id || ''));
-
-  return {
-    pmid: id,
-    title: r.title || '',
-    journal: journal,
-    abstract: r.abstractText || '',
-    pubDate: pubDate,
-    url: url
-  };
-}
-
-/**
- * PubMedの特定の1件(PMID指定)を取得する(手動追加用)
- */
-function fetchPubMedArticleByPmid(pmid) {
-  try {
-    const fetchUrl = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id='
-      + pmid + '&rettype=abstract&retmode=xml';
-    const fetchRes = UrlFetchApp.fetch(fetchUrl, { muteHttpExceptions: true });
-    const xmlText = fetchRes.getContentText();
-    if (!xmlText || xmlText.trim().indexOf('<') !== 0) return null;
-
-    const xml = XmlService.parse(xmlText);
-    const root = xml.getRootElement();
-    const articles = root.getChildren('PubmedArticle');
-    if (articles.length === 0) return null;
-
-    const article = articles[0];
-    const medline = article.getChild('MedlineCitation');
-    const foundPmid = medline.getChild('PMID').getText();
-    const articleEl = medline.getChild('Article');
-    const title = articleEl.getChildText('ArticleTitle') || '';
-    const journalEl = articleEl.getChild('Journal');
-    const journal = journalEl ? (journalEl.getChildText('Title') || '') : '';
-
-    let abstractText = '';
-    const abstractEl = articleEl.getChild('Abstract');
-    if (abstractEl) {
-      abstractText = abstractEl.getChildren('AbstractText').map(t => t.getText()).join(' ');
-    }
-
-    let pubDate = '';
-    try {
-      const pd = journalEl.getChild('JournalIssue').getChild('PubDate');
-      const year = pd.getChildText('Year') || '';
-      const month = pubMedMonthToNum(pd.getChildText('Month'));
-      const day = (pd.getChildText('Day') || '01').padStart(2, '0');
-      if (year) pubDate = year + '-' + month + '-' + day;
-    } catch (e) { /* 日付が取得できない場合は空欄のまま */ }
-
-    return {
-      pmid: foundPmid,
-      title: title,
-      journal: journal,
-      abstract: abstractText,
-      pubDate: pubDate,
-      url: 'https://pubmed.ncbi.nlm.nih.gov/' + foundPmid + '/'
-    };
-  } catch (err) {
-    Logger.log('PubMed個別取得エラー(PMID:' + pmid + '): ' + err);
-    return null;
-  }
-}
-
-/**
- * URL(PubMed / Europe PMC / DOI)から論文1件を判別・取得する(手動追加用)
- */
-function fetchPaperByUrl(url) {
-  const pubmedMatch = url.match(/pubmed\.ncbi\.nlm\.nih\.gov\/(\d+)/);
-  if (pubmedMatch) return fetchPubMedArticleByPmid(pubmedMatch[1]);
-
-  const europePmcMatch = url.match(/europepmc\.org\/article\/([A-Za-z]+)\/([^\/\?#]+)/);
-  if (europePmcMatch) {
-    const results = fetchEuropePmcRaw('SRC:' + europePmcMatch[1] + ' AND EXT_ID:' + europePmcMatch[2], 1);
-    return results.length > 0 ? mapEuropePmcResult(results[0]) : null;
-  }
-
-  const doiMatch = url.match(/doi\.org\/(.+)$/);
-  if (doiMatch) {
-    const results = fetchEuropePmcRaw('DOI:' + decodeURIComponent(doiMatch[1]), 1);
-    return results.length > 0 ? mapEuropePmcResult(results[0]) : null;
-  }
-
-  return null;
-}
-
-/**
- * 論文を手動でURL指定で追加する(社内メンバーが選んだものである前提から、対象外にはしない)
- */
-function manualAddPaperByUrl(url) {
-  if (!url) {
-    return { status: 'error', reason: 'url_required' };
-  }
-
-  const ss = SpreadsheetApp.openById(SHEET_ID);
-  let sheet = ss.getSheetByName(ACADEMIC_SHEET_NAME);
-  if (!sheet) {
-    sheet = ss.insertSheet(ACADEMIC_SHEET_NAME);
-    sheet.appendRow(ACADEMIC_COLUMNS);
-  }
-
-  const paper = fetchPaperByUrl(url.trim());
-  if (!paper || !paper.title) {
-    return { status: 'error', reason: 'not_found' };
-  }
-
-  const existing = sheet.getDataRange().getValues().slice(1);
-  const existingPmids = new Set(existing.map(r => String(r[12])).filter(Boolean));
-  const existingUrls = new Set(existing.map(r => normalizeUrl(r[3])));
-  if (existingPmids.has(paper.pmid) || existingUrls.has(normalizeUrl(paper.url))) {
-    return { status: 'skipped', reason: 'duplicate' };
-  }
-
-  const judgedList = judgeAcademicBatch([paper]);
-  const judged = judgedList && judgedList[0];
-  if (!judged) {
-    return { status: 'error', reason: 'ai_judge_failed' };
-  }
-
-  const newRow = [
-    sheet.getLastRow(),
-    paper.title,
-    paper.journal,
-    paper.url,
-    paper.pubDate,
-    Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd HH:mm'),
-    judged.重要度 || '中',
-    '未確認',
-    judged.要約 || '',
-    judged.国 || '',
-    Array.isArray(judged.部門) ? judged.部門.join(', ') : '',
-    judged.判定理由 || '',
-    paper.pmid,
-    '手動追加' // テーマ: 自動収集のクエリ由来ではないため専用のテーマ名にする
-  ];
-  sheet.appendRow(newRow);
-
-  return { status: 'ok', title: paper.title };
-}
-
-/**
- * 論文(最大10件)をまとめてGeminiに渡し、重要度・国・部門・要約(日本語)を判定させる
- */
-function judgeAcademicBatch(batch) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
-  if (!apiKey) {
-    Logger.log('GEMINI_API_KEYが未設定です');
-    return null;
-  }
-
-  const list = batch.map((p, idx) => `${idx + 1}. タイトル: ${p.title}\n   ジャーナル: ${p.journal}\n   抄録: ${(p.abstract || '').slice(0, 500)}`).join('\n\n');
-
-  const prompt = `あなたはART(生殖補助医療)分野の学術論文を評価する専門アナリストです。
-以下はPubMedで検索された論文(抄録は英語)の一覧です。それぞれについて判定してください。
-
-${list}
-
-各論文について、必ず以下の形式のJSON配列のみで回答してください(前置き・コードブロック記号は不要)。配列の要素数は必ず論文数(${batch.length}件)と一致させ、番号順に対応させること。
-
-出力形式:
-[
-  {
-    "対象": true または false (ART・生殖医療・SaMD・ICSI自動化に無関係な論文はfalseとする),
-    "重要度": "高" | "中" | "低",
-    "判定理由": "重要度をその評価にした理由を一言で",
-    "国": "研究が行われた国名を日本語で(判断できなければグローバル)",
-    "部門": ["関連する部門を以下から1つ以上選び配列で: 開発, 臨床開発, 品質保証, 薬事, 事業開発"],
-    "要約": "抄録の内容を日本語で2〜3行に要約(事実ベース、推測を含めない)"
-  },
-  ...
-]
-
-判定基準:
-- 重要度「高」: ARCSの事業領域(生殖医療AI・SaMD・ICSI自動化)に直接関わる臨床的知見・多施設検証・実用化に近い成果
-- 重要度「中」: 関連領域の基礎研究・小規模研究で、参考情報として有用なもの
-- 重要度「低」: 関連度が低い、または限定的な知見のもの
-- 「部門」は臨床開発・開発(AI・医療機器開発)に該当することが多いが、内容に応じて判定すること`;
-
-  const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=' + apiKey;
-  const payload = { contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: 'application/json' } };
-
-  const MAX_RETRIES = 3;
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      const res = UrlFetchApp.fetch(url, {
-        method: 'post', contentType: 'application/json', payload: JSON.stringify(payload), muteHttpExceptions: true
-      });
-      const responseText = res.getContentText();
-      const json = JSON.parse(responseText);
-
-      if (json.error) {
-        const isRetryable = json.error.status === 'UNAVAILABLE' || json.error.code === 503;
-        if (isRetryable && attempt < MAX_RETRIES) {
-          Utilities.sleep(attempt * 5000);
-          continue;
-        }
-        Logger.log('学術研究バッチAPIエラー: ' + JSON.stringify(json.error));
-        return null;
-      }
-      if (!json.candidates || !json.candidates[0]) return null;
-
-      const parsed = JSON.parse(json.candidates[0].content.parts[0].text);
-      return Array.isArray(parsed) ? parsed : null;
-    } catch (err) {
-      Logger.log('学術研究バッチ判定エラー: ' + err);
-      return null;
-    }
-  }
-  return null;
-}
-
-function collectNews() {
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
-
-  // まず、手動追加された「判定待ち」の記事をGeminiでまとめて判定する
-  processPendingManualAdds(sheet);
-
-  const existing = sheet.getDataRange().getValues().slice(1);
-  const existingUrls = new Set(existing.map(r => normalizeUrl(r[5])));
-  const existingTitles = existing.map(r => ({ title: r[1], date: r[6] }));
-
-  const props = PropertiesService.getScriptProperties();
-  const lastRun = props.getProperty('LAST_RUN_DATE');
-  const sinceDate = lastRun || Utilities.formatDate(new Date(Date.now() - 7 * 86400000), 'Asia/Tokyo', 'yyyy-MM-dd');
-
-  // まず全クエリから候補記事を集める(重複はここで除外)
-  const candidates = [];
-  Object.keys(QUERY_SETS).forEach(field => {
-    QUERY_SETS[field].forEach(query => {
-      const articles = fetchGoogleNewsRss(query, sinceDate);
-      articles.forEach(article => {
-        const normUrl = normalizeUrl(article.url);
-        if (existingUrls.has(normUrl)) return;
-        if (isSimilarTitleExists(article.title, article.pubDate, existingTitles)) return;
-        if (candidates.some(c => normalizeUrl(c.url) === normUrl)) return; // 候補内の重複も除外
-
-        candidates.push(article);
-        existingUrls.add(normUrl); // 以降の重複チェック用に仮追加
-        existingTitles.push({ title: article.title, date: article.pubDate });
-      });
-    });
-  });
-
-  Logger.log('候補記事数: ' + candidates.length);
-
-  // 10件ずつまとめてGeminiに判定させる(無料枠節約のため)
-  const BATCH_SIZE = 10;
-  let addedCount = 0;
-
-  for (let i = 0; i < candidates.length; i += BATCH_SIZE) {
-    const batch = candidates.slice(i, i + BATCH_SIZE);
-    const judgedList = judgeBatchWithGemini(batch);
-    if (!judgedList) continue;
-    if (judgedList.length !== batch.length) {
-      Logger.log('件数不一致のため、このバッチはスキップ(紐付けのズレ防止): 送信' + batch.length + '件 / 応答' + judgedList.length + '件');
-      continue;
-    }
-
-    batch.forEach((article, idx) => {
-      const judged = judgedList[idx];
-      if (!judged || judged.分野 === '対象外') return;
-
-      const newRow = [
-        sheet.getLastRow(),
-        article.title,
-        judged.分野,
-        'Web検索(自動収集)',
-        '',
-        article.url,
-        article.pubDate,
-        Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd HH:mm'),
-        judged.重要度,
-        '未確認',
-        judged.要約,
-        judged.国 || '',
-        Array.isArray(judged.部門) ? judged.部門.join(', ') : '',
-        judged.判定理由 || ''
-      ];
-      sheet.appendRow(newRow);
-      addedCount++;
-    });
-
-    Utilities.sleep(2000); // バッチ間のクールダウン
-  }
-
-  props.setProperty('LAST_RUN_DATE', Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd'));
-
-  Logger.log('前回実行日(検索範囲の起点): ' + sinceDate + ' / 追加件数: ' + addedCount);
-}
-
-function fetchGoogleNewsRss(query, sinceDate, limit) {
-  const queryWithDate = sinceDate ? (query + ' after:' + sinceDate) : query;
-  const url = 'https://news.google.com/rss/search?q=' + encodeURIComponent(queryWithDate) + '&hl=ja&gl=JP&ceid=JP:ja';
-  try {
-    const res = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
-    const xml = XmlService.parse(res.getContentText());
-    const items = xml.getRootElement().getChild('channel').getChildren('item');
-
-    const articles = items.slice(0, limit || 15).map(item => ({
-      title: item.getChildText('title'),
-      url: item.getChildText('link'),
-      pubDate: formatPubDate(item.getChildText('pubDate')),
-      snippet: stripHtml(item.getChildText('description') || '')
+  }, 15000);
+
+  window[callbackName] = function (json) {
+    if (settled) return;
+    settled = true;
+    clearTimeout(timeoutId);
+    delete window[callbackName];
+    script.remove();
+
+    DATA = (json.items || []).map(item => ({
+      id: item["ID"],
+      title: item["タイトル"],
+      field: item["分野"],
+      importance: IMPORTANCE_MAP[item["重要度"]] || "mid",
+      importanceLabel: item["重要度"] || "中",
+      summary: item["要約"],
+      source: item["ソース種別"],
+      poster: item["投稿者"],
+      date: item["公開日"],
+      registeredAt: item["登録日時"],
+      region: normalizeRegion(item["国"]),
+      departments: (item["部門"] || "").split(",").map(d => d.trim()).filter(Boolean),
+      reason: item["判定理由"] || "",
+      status: item["ステータス"] || "",
+      url: item["元URL"]
     }));
 
-    return articles.filter(a => !isBlockedDomain(a.url));
-  } catch (err) {
-    Logger.log('RSS取得エラー(' + query + '): ' + err);
-    return [];
+    // 新着順(記事の公開日が新しい順)に並び替え
+    DATA.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    MEMOS = json.memos || {};
+    REPORTS = json.reports || [];
+    FIELD_DIGEST_HISTORY = json.fieldDigestHistory || {};
+    FIELD_MEMOS = json.fieldMemos || {};
+    PAPERS = json.papers || [];
+
+    updateRegionsFromData();
+    updateMonthsFromData();
+
+    document.getElementById("loadingState").style.display = "none";
+    render();
+  };
+
+  const script = document.createElement("script");
+  script.src = API_URL + "?callback=" + callbackName;
+  script.onerror = () => {
+    if (!settled) {
+      settled = true;
+      clearTimeout(timeoutId);
+      delete window[callbackName];
+      handleLoadError(new Error("スクリプト読み込み失敗"));
+    }
+  };
+  document.body.appendChild(script);
+}
+
+function handleLoadError(err) {
+  document.getElementById("loadingState").style.display = "none";
+  document.getElementById("errorState").style.display = "block";
+  console.error("データ取得エラー:", err);
+}
+
+document.getElementById("retryBtn").addEventListener("click", loadData);
+
+function renderChips() {
+  const fieldEl = document.getElementById("fieldChips");
+  fieldEl.innerHTML = FIELDS.map(f =>
+    `<div class="chip ${f === activeField ? "active" : ""}" data-field="${f}">${f}</div>`
+  ).join("");
+  fieldEl.querySelectorAll(".chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      activeField = chip.dataset.field;
+      render();
+    });
+  });
+
+  const regionEl = document.getElementById("regionChips");
+  regionEl.innerHTML = REGIONS.map(r =>
+    `<div class="region-chip ${r === activeRegion ? "active" : ""}" data-region="${r}">${r}</div>`
+  ).join("");
+  regionEl.querySelectorAll(".region-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      activeRegion = chip.dataset.region;
+      render();
+    });
+  });
+
+  const deptEl = document.getElementById("departmentChips");
+  deptEl.innerHTML = DEPARTMENTS.map(d =>
+    `<div class="region-chip ${d === activeDepartment ? "active" : ""}" data-department="${d}">${d}</div>`
+  ).join("");
+  deptEl.querySelectorAll(".region-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      activeDepartment = chip.dataset.department;
+      render();
+    });
+  });
+
+  const impEl = document.getElementById("importanceChips");
+  impEl.innerHTML = IMPORTANCE_LEVELS.map(i =>
+    `<div class="region-chip ${i === activeImportance ? "active" : ""}" data-importance="${i}">${i}</div>`
+  ).join("");
+  impEl.querySelectorAll(".region-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      activeImportance = chip.dataset.importance;
+      render();
+    });
+  });
+
+  const monthEl = document.getElementById("monthChips");
+  const monthsToShow = showOlderMonths ? [...CURRENT_YEAR_MONTHS, ...OLDER_MONTHS] : CURRENT_YEAR_MONTHS;
+  let monthHtml = monthsToShow.map(m =>
+    `<div class="region-chip ${m === activeMonth ? "active" : ""}" data-month="${m}">${m}</div>`
+  ).join("");
+  if (OLDER_MONTHS.length > 0) {
+    monthHtml += `<div class="region-chip" id="olderMonthsToggle">${showOlderMonths ? "過去の月を隠す ▲" : `過去の月を見る(${OLDER_MONTHS.length}) ▼`}</div>`;
+  }
+  monthEl.innerHTML = monthHtml;
+
+  monthEl.querySelectorAll(".region-chip[data-month]").forEach(chip => {
+    chip.addEventListener("click", () => {
+      activeMonth = chip.dataset.month;
+      render();
+      updateMonthSummaryPanel("news", activeMonth, "monthSummaryPanel");
+    });
+  });
+  const olderToggle = document.getElementById("olderMonthsToggle");
+  if (olderToggle) {
+    olderToggle.addEventListener("click", () => {
+      showOlderMonths = !showOlderMonths;
+      render();
+    });
   }
 }
 
-/**
- * 有料会員限定媒体など、収集から除外したいドメインを判定する
- * スクリプトプロパティ「BLOCKED_DOMAINS」にカンマ区切りで登録して管理する(コード変更不要)
- * 例: sanin-chuo.co.jp,nikkei.com
- */
-/**
- * 有料会員制メディアのドメインブロックリスト
- * 「国内ニュースメディア_無料_vs_有料会員制」調査(2026年8月31日)の「有料・会員登録制」17媒体
- * + 実地確認で完全有料と判明した地方紙2媒体(山陰中央新報・大分合同新聞)
- * 今後見つかった地方紙等は、スクリプトプロパティ「BLOCKED_DOMAINS」に追記することで
- * コード変更なしに追加できる(このデフォルトリストと合算される)
- */
-const DEFAULT_BLOCKED_DOMAINS = [
-  // 全国紙・準全国紙
-  'asahi.com', 'mainichi.jp', 'yomiuri.co.jp', 'nikkei.com', 'sankei.com',
-  // 地方紙
-  'hokkaido-np.co.jp', 'kahoku.news', 'kobe-np.co.jp', 'nishinippon.co.jp', 'okinawatimes.co.jp',
-  'sanin-chuo.co.jp', 'oita-press.co.jp', 'fukuishimbun.co.jp',
-  // ビジネス系
-  'toyokeizai.net', 'diamond.jp', 'president.jp', 'newspicks.com', 'business.nikkei.com', 'xtech.nikkei.com',
-  // 出版社系
-  'shueisha.online'
-];
+function render() {
+  renderChips();
+  const q = query.trim().toLowerCase();
+  const filtered = DATA.filter(item => {
+    const matchesField = activeField === "すべて" || item.field === activeField;
+    const matchesDepartment = activeDepartment === "すべて" || item.departments.includes(activeDepartment);
+    const matchesImportance = activeImportance === "すべて" || item.importanceLabel === activeImportance;
+    const matchesRegion = activeRegion === "すべて" || item.region === activeRegion;
+    const matchesMonth = activeMonth === "すべて" || itemMonthLabel(item.date) === activeMonth;
+    const matchesQuery = !q || item.title.toLowerCase().includes(q) || item.summary.toLowerCase().includes(q);
+    const matchesNewOnly = !showNewOnly || isNewItem(item.date);
+    const matchesBookmark = !showBookmarkedOnly || !!bookmarkState[item.id];
+    return matchesField && matchesDepartment && matchesImportance && matchesRegion && matchesMonth && matchesQuery && matchesNewOnly && matchesBookmark;
+  });
 
-function isBlockedDomain(url) {
-  const additionalStr = PropertiesService.getScriptProperties().getProperty('BLOCKED_DOMAINS') || '';
-  const additionalDomains = additionalStr.split(',').map(d => d.trim()).filter(Boolean);
-  const blockedDomains = DEFAULT_BLOCKED_DOMAINS.concat(additionalDomains);
+  document.getElementById("countLine").textContent = `${filtered.length}件表示中(全${DATA.length}件)`;
 
-  try {
-    const hostname = url.match(/^https?:\/\/([^\/]+)/)[1];
-    return blockedDomains.some(domain => hostname.includes(domain));
-  } catch (e) {
-    return false;
+  const grid = document.getElementById("cardGrid");
+  const empty = document.getElementById("emptyState");
+
+  if (filtered.length === 0) {
+    grid.innerHTML = "";
+    empty.style.display = "block";
+    return;
   }
-}
+  empty.style.display = "none";
 
-function formatPubDate(rfc822) {
-  try {
-    return Utilities.formatDate(new Date(rfc822), 'Asia/Tokyo', 'yyyy-MM-dd');
-  } catch (e) {
-    return '';
-  }
-}
+  grid.innerHTML = filtered.map(item => `
+    <div class="card">
+      <div class="card-top">
+        ${item.status === "判定待ち"
+          ? `<span class="pending-tag">⏳ 判定待ち(翌朝までに自動分類されます)</span>`
+          : `<span class="field-tag" style="${fieldTagStyle(item.field)}">${item.field}</span>`}
+        <div class="card-top-right">
+          <span class="edit-toggle-btn" data-edit-id="${item.id}" title="編集">✏️</span>
+        </div>
+      </div>
+      <div class="card-top-row2">
+        <div class="hashtag-row">
+          ${item.departments.map(d => `<span class="region-tag">${d}</span>`).join("")}
+          ${item.region ? `<span class="region-tag">${item.region}</span>` : ""}
+        </div>
+        ${isNewItem(item.date) ? '<span class="new-badge">NEW</span>' : ""}
+      </div>
+      <div class="card-title" data-title-id="${item.id}"><a href="${item.url}" target="_blank" rel="noopener">${item.title}</a></div>
+      <div class="card-summary" data-summary-id="${item.id}">${item.summary}</div>
+      <div class="edit-form" data-edit-form-id="${item.id}" style="display:none;">
+        <input type="text" class="edit-title-input" data-id="${item.id}" value="${escapeAttr(item.title)}" placeholder="タイトル">
+        <input type="text" class="edit-url-input" data-id="${item.id}" value="${escapeAttr(item.url)}" placeholder="URL">
+        <div class="form-row">
+          <select class="edit-field-select" data-id="${item.id}">
+            <option value="ART/生殖医療テクノロジー動向" ${item.field === "ART/生殖医療テクノロジー動向" ? "selected" : ""}>ART/生殖医療テクノロジー動向</option>
+            <option value="規制・政策動向" ${item.field === "規制・政策動向" ? "selected" : ""}>規制・政策動向</option>
+            <option value="学術研究" ${item.field === "学術研究" ? "selected" : ""}>学術研究</option>
+            <option value="業界動向・統計" ${item.field === "業界動向・統計" ? "selected" : ""}>業界動向・統計</option>
+            <option value="競合動向" ${item.field === "競合動向" ? "selected" : ""}>競合動向</option>
+            <option value="その他" ${item.field === "その他" ? "selected" : ""}>その他</option>
+          </select>
+          <input type="text" class="edit-country-input" data-id="${item.id}" value="${escapeAttr(item.region)}" placeholder="国">
+          <select class="edit-importance-select" data-id="${item.id}">
+            <option value="高" ${item.importanceLabel === "高" ? "selected" : ""}>重要度: 高</option>
+            <option value="中" ${item.importanceLabel === "中" ? "selected" : ""}>重要度: 中</option>
+            <option value="低" ${item.importanceLabel === "低" ? "selected" : ""}>重要度: 低</option>
+          </select>
+        </div>
+        <textarea class="edit-summary-input" data-id="${item.id}" rows="2" placeholder="要約">${escapeAttr(item.summary)}</textarea>
+        <div class="form-row">
+          <button class="edit-save-btn" data-id="${item.id}">保存</button>
+          <button class="edit-cancel-btn" data-id="${item.id}">キャンセル</button>
+        </div>
+      </div>
+      <div class="meta-row">
+        <div class="meta-row-left">
+          <span class="importance-badge importance-${item.importance}">重要度: ${item.importanceLabel}</span>
+          ${item.reason ? `<span class="reason-toggle" data-reason-id="${item.id}">🔍理由</span>` : ""}
+        </div>
+        <button class="flag-btn ${flagState[item.id] ? "active" : ""}"
+          data-id="${item.id}" data-title="${escapeAttr(item.title)}" data-field="${escapeAttr(item.field)}" data-importance="${escapeAttr(item.importanceLabel)}">
+          ${flagState[item.id] ? "✓ 違和感を記録済み" : "この判定に違和感"}
+        </button>
+      </div>
+      ${item.reason ? `<div class="reason-body" data-reason-body-id="${item.id}" style="display:none;">${escapeAttr(item.reason)}</div>` : ""}
+      <div class="meta-row">
+        <span class="source-badge">${item.source}${item.poster ? " ・ " + item.poster : ""}</span>
+        <span style="font-size:11.5px;color:#9AA3AB;">${formatDisplayDate(item.date)}</span>
+      </div>
+      <button class="bookmark-btn-full ${bookmarkState[item.id] ? "active" : ""}" data-id="${item.id}">
+        🔖 ${bookmarkState[item.id] ? "ブックマーク済み" : "ブックマークする"}
+      </button>
+    </div>
+  `).join("");
 
-function stripHtml(html) {
-  return html.replace(/<[^>]*>/g, '').trim();
-}
+  grid.querySelectorAll(".flag-btn").forEach(btn => {
+    btn.addEventListener("click", () => onFlagClick(btn));
+  });
 
-function normalizeUrl(url) {
-  if (!url) return '';
-  return url.split('?')[0].replace(/\/$/, '').toLowerCase();
-}
+  grid.querySelectorAll(".reason-toggle").forEach(toggle => {
+    toggle.addEventListener("click", () => {
+      const body = grid.querySelector(`.reason-body[data-reason-body-id="${toggle.dataset.reasonId}"]`);
+      body.style.display = body.style.display === "none" ? "block" : "none";
+    });
+  });
 
-function isSimilarTitleExists(title, pubDate, existingTitles) {
-  const targetDate = new Date(pubDate);
-  return existingTitles.some(e => {
-    if (!e.date) return false;
-    const diffDays = Math.abs((targetDate - new Date(e.date)) / 86400000);
-    if (diffDays > 60) return false; // 再掲載・別メディアでの再報道等を考慮し60日以内に拡大
-    if (titleSimilarity(title, e.title) >= 0.7) return true; // 表現の違いを拾いやすくするため閾値も緩和
-    if (titleContainment(title, e.title) >= 0.9) return true; // 片方が他方の見出しをほぼ完全に含む場合(サブ見出しの有無等)も重複とみなす
-    return false;
+  grid.querySelectorAll(".bookmark-btn-full").forEach(btn => {
+    btn.addEventListener("click", () => onBookmarkClick(btn));
+  });
+
+  grid.querySelectorAll(".edit-toggle-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.editId;
+      const form = grid.querySelector(`.edit-form[data-edit-form-id="${id}"]`);
+      const titleEl = grid.querySelector(`.card-title[data-title-id="${id}"]`);
+      const summaryEl = grid.querySelector(`.card-summary[data-summary-id="${id}"]`);
+      const opening = form.style.display === "none";
+      form.style.display = opening ? "flex" : "none";
+      titleEl.style.display = opening ? "none" : "block";
+      summaryEl.style.display = opening ? "none" : "block";
+    });
+  });
+
+  grid.querySelectorAll(".edit-cancel-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.id;
+      grid.querySelector(`.edit-form[data-edit-form-id="${id}"]`).style.display = "none";
+      grid.querySelector(`.card-title[data-title-id="${id}"]`).style.display = "block";
+      grid.querySelector(`.card-summary[data-summary-id="${id}"]`).style.display = "block";
+    });
+  });
+
+  grid.querySelectorAll(".edit-save-btn").forEach(btn => {
+    btn.addEventListener("click", () => onEditSave(btn));
   });
 }
 
-/**
- * タイトル比較用に正規化する
- * - 全角英数字を半角に統一(NFKC正規化。共同通信配信記事が媒体ごとに全角/半角表記が異なるケースに対応)
- * - 末尾の「 - 媒体名」部分を除去(Google Newsが付与する出典表記で、記事本文の類似性とは無関係なため)
- */
-function normalizeTitleForComparison(title) {
-  return String(title || '')
-    .normalize('NFKC')
-    .replace(/\s*[-−–—]\s*[^\-−–—]{1,30}$/, '') // 末尾の "- 媒体名" を除去
-    .trim();
+function onEditSave(btn) {
+  const id = btn.dataset.id;
+  const grid = document.getElementById("cardGrid");
+
+  const title = grid.querySelector(`.edit-title-input[data-id="${id}"]`).value.trim();
+  const url = grid.querySelector(`.edit-url-input[data-id="${id}"]`).value.trim();
+  const field = grid.querySelector(`.edit-field-select[data-id="${id}"]`).value;
+  const country = grid.querySelector(`.edit-country-input[data-id="${id}"]`).value.trim();
+  const importance = grid.querySelector(`.edit-importance-select[data-id="${id}"]`).value;
+  const summary = grid.querySelector(`.edit-summary-input[data-id="${id}"]`).value.trim();
+
+  if (!title) return;
+
+  // ローカルのDATAも即時更新して見た目に反映
+  const item = DATA.find(d => String(d.id) === String(id));
+  if (item) {
+    item.title = title;
+    item.url = url;
+    item.field = field;
+    item.region = country;
+    item.importance = IMPORTANCE_MAP[importance] || "mid";
+    item.importanceLabel = importance;
+    item.summary = summary;
+  }
+
+  fetch(API_URL, {
+    method: "POST",
+    mode: "no-cors",
+    credentials: "include",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({ action: "updateArticle", id: id, title, url, field, country, importance, summary })
+  }).catch(err => console.error("編集保存エラー:", err));
+
+  render();
 }
 
-function titleSimilarity(a, b) {
-  const normA = normalizeTitleForComparison(a);
-  const normB = normalizeTitleForComparison(b);
-  const setA = new Set(normA);
-  const setB = new Set(normB);
-  const intersection = [...setA].filter(c => setB.has(c)).length;
-  const union = new Set([...setA, ...setB]).size;
-  return union === 0 ? 0 : intersection / union;
+function onMemoSubmit(btn) {
+  const id = btn.dataset.id;
+  const input = document.querySelector(`.memo-input[data-id="${id}"]`);
+  const nameInput = document.querySelector(`.memo-name-input[data-id="${id}"]`);
+  const content = input.value.trim();
+  if (!content) return;
+
+  const rawName = nameInput.value.trim();
+  const author = rawName || "匿名";
+  localStorage.setItem("artKbAuthorName", rawName); // 空欄なら次回も空欄のまま(=匿名希望を記憶)
+  savedAuthorName = rawName;
+
+  if (!MEMOS[id]) MEMOS[id] = [];
+  MEMOS[id].push({ author, content, date: "たった今" });
+  input.value = "";
+  render();
+
+  fetch(API_URL, {
+    method: "POST",
+    mode: "no-cors",
+    credentials: "include",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({ action: "addMemo", id: id, author: author, content: content })
+  }).catch(err => console.error("メモ送信エラー:", err));
 }
 
-/**
- * 「短い方のタイトルが、長い方にどれだけ含まれているか」の割合(包含率)。
- * 片方に無いサブ見出し・補足説明が付いているだけのケース(例:見出しの核心部分は同一だが、
- * 片方だけ「／〇〇の不妊治療」等の追加説明が付いている)を拾うために、Jaccard類似度とは別に判定する。
- * 短すぎるタイトル同士での誤判定を避けるため、短い方が8文字未満の場合はfalse相当(0)を返す。
- */
-function titleContainment(a, b) {
-  const normA = normalizeTitleForComparison(a);
-  const normB = normalizeTitleForComparison(b);
-  const setA = new Set(normA);
-  const setB = new Set(normB);
-  const shorter = setA.size <= setB.size ? setA : setB;
-  const longer = setA.size <= setB.size ? setB : setA;
-  if (shorter.size < 8) return 0;
-  const intersection = [...shorter].filter(c => longer.has(c)).length;
-  return intersection / shorter.size;
+function escapeAttr(str) {
+  return String(str || "").replace(/"/g, "&quot;");
 }
 
-// ★ 複数記事(最大10件)をまとめて1回のAPI呼び出しで判定する(無料枠節約のため)
-function judgeBatchWithGemini(batch, mode) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
-  if (!apiKey) {
-    Logger.log('GEMINI_API_KEYが未設定です');
-    return null;
-  }
-
-  const isManual = mode === 'manual';
-
-  const articlesList = batch.map((a, idx) =>
-    `${idx + 1}. タイトル: ${a.title}\n   概要: ${a.snippet}`
-  ).join('\n\n');
-
-  const fieldOptions = isManual
-    ? '"ART/生殖医療テクノロジー動向" | "規制・政策動向" | "学術研究" | "業界動向・統計" | "競合動向" | "その他"'
-    : '"ART/生殖医療テクノロジー動向" | "規制・政策動向" | "学術研究" | "業界動向・統計" | "競合動向" | "対象外"';
-
-  const manualNote = isManual
-    ? '\nこれらの記事は、社内メンバーが「会社に関係がある」と判断して手動で追加したものです。したがって「対象外」という選択肢は使わず、必ずいずれかの分野に分類してください。どうしても5分野のいずれにも当てはまらない場合のみ "その他" としてください。'
-    : '';
-
-  const prompt = `あなたはART(生殖補助医療)・SaMD規制・業界動向に関するニュースを分類する専門アシスタントです。
-以下は複数の記事です。それぞれについて判定してください。${manualNote}
-
-${articlesList}
-
-各記事について、必ず以下の形式のJSON配列のみで回答してください(前置き・コードブロック記号は不要)。配列の要素数は必ず記事数(${batch.length}件)と一致させ、記事の番号順に対応させること。
-
-出力形式:
-[
-  {
-    "分野": ${fieldOptions},
-    "重要度": "高" | "中" | "低",
-    "判定理由": "重要度をその評価にした理由を一言で(例: PMDAの公式発表であり、SaMD承認プロセスに直接影響するため)",
-    "国": "記事が扱う対象が所在する国名を日本語で(例: 日本, アメリカ, イギリス, ペルー, 韓国, グローバル など)",
-    "部門": ["関連する部門を以下から1つ以上選び配列で(該当なしなら空配列): 開発, 臨床開発, 品質保証, 薬事, 事業開発"],
-    "要約": "2〜3行程度、事実ベースの要約(推測や評価は含めない)"
-  },
-  ...
-]
-
-判定基準:${isManual ? '' : `
-- ART・生殖医療・不妊治療・SaMD・医療AI規制に関連しない記事は "分野":"対象外" とすること
-- 芸能人・著名人・一般個人の「卵子凍結しました」「不妊治療しています」等の個人的な体験談・告白記事は "対象外" とすること`}
-- 「競合動向」は、以下のような生殖医療AI・ICSI自動化領域の競合企業(Overture Life, Conceivable Life Sciences, BAIBYS, IVF2.0, SiD, VitruvianMD, NeoGenix Fertility, Fertilis, BetterFit, Optimaton.ai, SpOvum, RoboICSI, Fertsy など)の技術・資金調達・臨床導入・提携・特許に関する記事に用いること。他の分野と迷う場合は「競合動向」を優先する
-- 「国」は「国内/海外」のような二択ではなく、実際の国名を日本語で記入すること
-- 複数の国にまたがる話題(国際的な提携、複数国のデータを扱う研究など)の場合は、個別の国名を並べず "グローバル" と記入すること
-- 「部門」は、記事内容が関係する社内部門を判定すること。1記事につき複数部門に該当してよい。判定基準は以下の通り:
-  - 開発(AI・医療機器開発): AI技術・アルゴリズムの精度、ロボティクス・自動化技術、機器のハードウェア/ソフトウェア設計、技術実装事例
-  - 臨床開発: 臨床試験・治験、臨床アウトカム(妊娠率・成功率等)、患者への適用結果、有効性・安全性データ、学会発表の臨床データ
-  - 品質保証: 品質マネジメントシステム、ISO規格の改定動向、品質不具合事例、リスクマネジメント
-  - 薬事: 規制当局(PMDA/FDA等)の動向、承認・認証プロセス、法改正、SaMDの薬事区分・規制解釈
-  - 事業開発: 市場規模データ、資金調達、企業提携・M&A、事業戦略、競合動向
-- 重要度は、以下の観点を踏まえて「高・中・低」を判定すること(印象ではなく、下記の条件に照らして判定する):
-  - 「高」の条件: 以下のいずれかに明確に該当する場合のみとする。単なる「業界動向として参考になる」「提携・事業拡大のニュース」というだけでは「高」にしてはならない
-    a) ARCSの競合・提携候補であることが明確な企業・製品に関する一次情報である
-    b) 生殖医療AI・SaMD・ICSI自動化に関する具体的な製品導入・共同開発・臨床データが示されている
-    c) 記事の内容が、ARCSの事業展開(米国展開・顧客獲得等)に直接的な機会または脅威を与えると具体的に言える
-  - 「中」の条件: 業界動向・研究発表・隣接領域の情報、一般的な企業提携・事業拡大のニュースなど、参考情報として有用だが上記a〜cのいずれにも該当しないもの(「業界動向として参考になる」はこの中に分類される典型例である)
-  - 「低」の条件: 統計の微修正、単発の展示会情報、間接的にしか関連しない一般ニュースなど
-  - 「判定理由」には、上記のどの条件(高のa/b/c、または中、低)に該当したかが分かるよう、具体的な根拠を一言で記載すること
-  - 重要度を確定する前に、書こうとしている「判定理由」の文章が、選んだ重要度の条件と矛盾していないか自己チェックすること(例: 理由に「参考になる」「動向を示す」等の中程度の表現しか書けない場合、重要度は「高」にしてはならない)`;
-
-  const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=' + apiKey;
-  const payload = {
-    contents: [{ parts: [{ text: prompt }] }],
-    generationConfig: { responseMimeType: 'application/json' }
-  };
-
-  const MAX_RETRIES = 3;
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      const res = UrlFetchApp.fetch(url, {
-        method: 'post',
-        contentType: 'application/json',
-        payload: JSON.stringify(payload),
-        muteHttpExceptions: true
-      });
-      const responseText = res.getContentText();
-      const json = JSON.parse(responseText);
-
-      if (json.error) {
-        const isRetryable = json.error.status === 'UNAVAILABLE' || json.error.code === 503;
-        if (isRetryable && attempt < MAX_RETRIES) {
-          Logger.log('Gemini一時混雑(503)、' + (attempt * 5) + '秒後に再試行します(' + attempt + '/' + MAX_RETRIES + ')');
-          Utilities.sleep(attempt * 5000);
-          continue;
-        }
-        Logger.log('Gemini バッチAPIエラー: ' + JSON.stringify(json.error));
-        return null;
-      }
-      if (!json.candidates || !json.candidates[0]) {
-        Logger.log('Gemini バッチ: candidatesなし: ' + responseText);
-        return null;
-      }
-
-      const parsed = JSON.parse(json.candidates[0].content.parts[0].text);
-      return Array.isArray(parsed) ? parsed : null;
-    } catch (err) {
-      Logger.log('Gemini バッチ判定エラー: ' + err);
-      return null;
-    }
-  }
-  return null;
+function escapeHtml(str) {
+  return String(str || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
 
-/**
- * 既存データのうち「国」列が空欄の行を、Geminiで一括判定して埋める
- * 10件まとめて1回のAPI呼び出しで判定することで、無料枠(1日20回)を節約する
- */
-/**
- * 既存データのうち「部門」列が空欄の行を、Geminiで一括判定して埋める(一度だけ手動実行)
- */
-/**
- * 既存データのうち「判定理由」列が空欄の行を、Geminiで一括判定して埋める(一度だけ手動実行)
- * 分野・重要度・国・部門など他の判定済み項目は上書きしない(判定理由のみ追記)
- */
-/**
- * 既存の全記事について、新しい重要度基準でGeminiに再判定させ、重要度・判定理由を上書き更新する
- * 分野・国・部門・要約は変更しない(重要度と判定理由のみ上書き)
- * 一度だけ手動実行する想定(基準を大きく見直した際の一括更新用)
- */
-function reevaluateImportance() {
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
-  const values = sheet.getDataRange().getValues();
-  const importanceColIndex = COLUMNS.indexOf('重要度');
-  const reasonColIndex = COLUMNS.indexOf('判定理由');
-  const summaryColIndex = COLUMNS.indexOf('要約');
-  const statusColIndex = COLUMNS.indexOf('ステータス');
-
-  const targets = [];
-  for (let i = 1; i < values.length; i++) {
-    const row = values[i];
-    if (row[0] === '') continue;
-    if (row[statusColIndex] === '判定待ち' || row[statusColIndex] === '対象外') continue;
-    targets.push({ rowIndex: i + 1, title: row[1], snippet: row[summaryColIndex] });
-  }
-
-  Logger.log('重要度 再評価 対象件数: ' + targets.length);
-
-  const BATCH_SIZE = 10;
-  let updatedCount = 0;
-  let errorCount = 0;
-
-  for (let i = 0; i < targets.length; i += BATCH_SIZE) {
-    const batch = targets.slice(i, i + BATCH_SIZE);
-    const judgedList = judgeBatchWithGemini(batch, 'manual'); // 分野の対象外判定はさせない(重要度のみ利用)
-
-    if (!judgedList || judgedList.length !== batch.length) {
-      Logger.log('重要度再評価バッチに失敗(件数不一致 or エラー)。次回に持ち越します。');
-      errorCount += batch.length;
-      continue;
-    }
-
-    batch.forEach((item, idx) => {
-      const judged = judgedList[idx];
-      if (!judged) { errorCount++; return; }
-      sheet.getRange(item.rowIndex, importanceColIndex + 1).setValue(judged.重要度 || '中');
-      sheet.getRange(item.rowIndex, reasonColIndex + 1).setValue(judged.判定理由 || '');
-      updatedCount++;
-    });
-
-    Utilities.sleep(2000);
-  }
-
-  Logger.log('重要度再評価 完了 → 更新: ' + updatedCount + ' 件 / エラー: ' + errorCount + ' 件');
+// Slackのmrkdwn記法(<url|タイトル>、*太字*)をHTML表示用に変換する
+function formatReportContent(content) {
+  let html = escapeHtml(content);
+  // <url|テキスト> → リンク
+  html = html.replace(/&lt;(https?:\/\/[^|&]+)\|([^&]+?)&gt;/g, '<a href="$1" target="_blank" rel="noopener" style="color:var(--blue);">$2</a>');
+  // *太字*
+  html = html.replace(/\*([^*]+)\*/g, '<strong>$1</strong>');
+  // _斜体_(分野の見出しに使われている)
+  html = html.replace(/_([^_]+)_/g, '<em>$1</em>');
+  return html;
 }
 
-function backfillReason() {
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
-  const values = sheet.getDataRange().getValues();
-  const reasonColIndex = COLUMNS.indexOf('判定理由');
-  const summaryColIndex = COLUMNS.indexOf('要約');
-  const statusColIndex = COLUMNS.indexOf('ステータス');
+const FIELD_COLORS = {
+  "ART/生殖医療テクノロジー動向": { bg: "#EEEDFE", color: "#6D4AA8" },
+  "規制・政策動向": { bg: "#FAECE7", color: "#C0392B" },
+  "学術研究": { bg: "#E1F5EE", color: "#1D8348" },
+  "業界動向・統計": { bg: "#E4EFF9", color: "#1F6FB2" },
+  "競合動向": { bg: "#FDEEDC", color: "#B9660B" },
+  "その他": { bg: "#F1F3F5", color: "#5A6570" }
+};
 
-  const targets = [];
-  for (let i = 1; i < values.length; i++) {
-    const row = values[i];
-    if (row[0] === '') continue;
-    if (row[statusColIndex] === '判定待ち' || row[statusColIndex] === '対象外') continue; // 未判定・対象外はスキップ
-    if (row[reasonColIndex]) continue; // すでに理由がある行はスキップ
-    targets.push({ rowIndex: i + 1, title: row[1], snippet: row[summaryColIndex] });
-  }
-
-  Logger.log('判定理由 対象件数: ' + targets.length);
-
-  const BATCH_SIZE = 10;
-  let updatedCount = 0;
-  let errorCount = 0;
-
-  for (let i = 0; i < targets.length; i += BATCH_SIZE) {
-    const batch = targets.slice(i, i + BATCH_SIZE);
-    const judgedList = judgeBatchWithGemini(batch, 'manual'); // 既存記事の再判定なので対象外にはしない
-
-    if (!judgedList || judgedList.length !== batch.length) {
-      Logger.log('判定理由バッチに失敗(件数不一致 or エラー)。次回に持ち越します。');
-      errorCount += batch.length;
-      continue;
-    }
-
-    batch.forEach((item, idx) => {
-      const judged = judgedList[idx];
-      const reason = judged && judged.判定理由 ? judged.判定理由 : '';
-      sheet.getRange(item.rowIndex, reasonColIndex + 1).setValue(reason);
-      updatedCount++;
-    });
-
-    Utilities.sleep(2000);
-  }
-
-  Logger.log('判定理由の更新完了 → 更新: ' + updatedCount + ' 件 / エラー: ' + errorCount + ' 件');
+function fieldTagStyle(field) {
+  const c = FIELD_COLORS[field] || { bg: "#F1F3F5", color: "#6B7580" };
+  return `border-left-color:${c.color};color:${c.color};`;
 }
 
-function backfillDepartment() {
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
-  const values = sheet.getDataRange().getValues();
-  const departmentColIndex = COLUMNS.indexOf('部門');
-  const summaryColIndex = COLUMNS.indexOf('要約');
-
-  const targets = [];
-  for (let i = 1; i < values.length; i++) {
-    const row = values[i];
-    if (row[0] === '') continue;
-    if (row[departmentColIndex]) continue;
-    targets.push({ rowIndex: i + 1, title: row[1], snippet: row[summaryColIndex] });
-  }
-
-  Logger.log('部門判定 対象件数: ' + targets.length);
-
-  const BATCH_SIZE = 10;
-  let updatedCount = 0;
-  let errorCount = 0;
-
-  for (let i = 0; i < targets.length; i += BATCH_SIZE) {
-    const batch = targets.slice(i, i + BATCH_SIZE);
-    const judgedList = judgeBatchWithGemini(batch);
-
-    if (!judgedList || judgedList.length !== batch.length) {
-      Logger.log('部門判定バッチに失敗(件数不一致 or エラー)。次回に持ち越します。');
-      errorCount += batch.length;
-      continue;
-    }
-
-    batch.forEach((item, idx) => {
-      const judged = judgedList[idx];
-      const dept = judged && Array.isArray(judged.部門) ? judged.部門.join(', ') : '';
-      sheet.getRange(item.rowIndex, departmentColIndex + 1).setValue(dept);
-      updatedCount++;
-    });
-
-    Utilities.sleep(2000);
-  }
-
-  Logger.log('部門欄の更新完了 → 更新: ' + updatedCount + ' 件 / エラー: ' + errorCount + ' 件');
+function isNewItem(publishDate) {
+  if (!publishDate) return false;
+  const published = new Date(publishDate);
+  const hoursSince = (Date.now() - published.getTime()) / 3600000;
+  return hoursSince <= 48; // 公開から48時間以内はNEW扱い
 }
 
-function backfillCountry() {
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
-  const values = sheet.getDataRange().getValues();
-  const countryColIndex = COLUMNS.indexOf('国');
+let savedAuthorName = localStorage.getItem("artKbAuthorName") || "";
 
-  // 空欄の行だけを集める
-  const targets = [];
-  for (let i = 1; i < values.length; i++) {
-    const row = values[i];
-    if (row[0] === '') continue;
-    if (row[countryColIndex]) continue; // すでに入っている行はスキップ
-    targets.push({ rowIndex: i + 1, title: row[1], summary: row[10] }); // シートは1始まり
-  }
+// { "記事ID": true } の形でブラウザに保存(「この判定に違和感」の記録状態)
+let flagState = JSON.parse(localStorage.getItem("artKbFlags") || "{}");
 
-  Logger.log('対象件数: ' + targets.length);
+// { "記事ID": true } の形でブラウザに保存(個人のブックマーク。ログイン不要、このブラウザだけで有効)
+let bookmarkState = JSON.parse(localStorage.getItem("artKbBookmarks") || "{}");
+let showBookmarkedOnly = false;
+let showBookmarkedOnlyAcademic = false;
 
-  const BATCH_SIZE = 10;
-  let updatedCount = 0;
-  let errorCount = 0;
-
-  for (let i = 0; i < targets.length; i += BATCH_SIZE) {
-    const batch = targets.slice(i, i + BATCH_SIZE);
-    const countries = judgeCountryBatch(batch);
-
-    if (countries) {
-      batch.forEach((item, idx) => {
-        const country = countries[idx];
-        if (country) {
-          sheet.getRange(item.rowIndex, countryColIndex + 1).setValue(country);
-          updatedCount++;
-        } else {
-          errorCount++;
-        }
-      });
-    } else {
-      errorCount += batch.length;
-    }
-
-    Utilities.sleep(2000); // バッチ間のクールダウン(レート制限対策)
-  }
-
-  Logger.log('国欄の更新完了 → 更新: ' + updatedCount + ' 件 / エラー: ' + errorCount + ' 件');
-}
-
-/**
- * 複数記事(最大10件)をまとめて1回のAPI呼び出しで国名判定する
- */
-function judgeCountryBatch(batch) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
-  if (!apiKey) {
-    Logger.log('GEMINI_API_KEYが未設定です');
-    return null;
-  }
-
-  const articlesList = batch.map((item, idx) =>
-    `${idx + 1}. タイトル: ${item.title}\n   要約: ${item.summary}`
-  ).join('\n\n');
-
-  const prompt = `以下は複数の記事です。それぞれの記事が扱う対象(企業・機関・制度・研究)が所在する国名を、日本語で具体的に判定してください(例: 日本, アメリカ, イギリス, ペルー, 韓国 など)。複数の国にまたがる話題の場合は、個別の国名を並べず「グローバル」としてください。
-
-${articlesList}
-
-必ず、記事の番号順に対応するJSON配列のみで回答してください(前置き・コードブロック記号は不要)。
-出力形式: ["1番目の国名", "2番目の国名", ...]
-配列の要素数は必ず記事数(${batch.length}件)と一致させること。`;
-
-  const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=' + apiKey;
-  const payload = {
-    contents: [{ parts: [{ text: prompt }] }],
-    generationConfig: { responseMimeType: 'application/json' }
-  };
-
-  try {
-    const res = UrlFetchApp.fetch(url, {
-      method: 'post',
-      contentType: 'application/json',
-      payload: JSON.stringify(payload),
-      muteHttpExceptions: true
-    });
-    const responseText = res.getContentText();
-    const json = JSON.parse(responseText);
-
-    if (json.error) {
-      Logger.log('国判定バッチAPIエラー: ' + JSON.stringify(json.error));
-      return null;
-    }
-    if (!json.candidates || !json.candidates[0]) {
-      Logger.log('国判定バッチ: candidatesなし: ' + responseText);
-      return null;
-    }
-
-    const parsed = JSON.parse(json.candidates[0].content.parts[0].text);
-    return Array.isArray(parsed) ? parsed : null;
-  } catch (err) {
-    Logger.log('国判定バッチエラー: ' + err);
-    return null;
-  }
-}
-
-/* ==========================================================
- * 週次レポート: 「興味あり」の多い記事ランキングをSlackに送信
- * ========================================================== */
-
-/**
- * 過去7日間の「興味あり」フィードバックを集計し、上位記事をSlackに送信する
- */
-/**
- * 分野ごとに、直近の記事をもとにAIが「今何が起きているか」を文章でまとめたダイジェストを生成する
- * 個別記事の要約の羅列ではなく、傾向・背景を含む文章にする
- */
-/**
- * 指定した月・スコープ(news/academic)のAI要約を返す。
- * 「月次サマリー」シートにキャッシュがあればそれを返し、なければ生成して保存する。
- */
-function generateMonthSummary(scope, month, checkOnly) {
-  if (!scope || !month) {
-    return { status: 'error', reason: 'invalid_params' };
-  }
-
-  const ss = SpreadsheetApp.openById(SHEET_ID);
-  let cacheSheet = ss.getSheetByName('月次サマリー');
-  if (!cacheSheet) {
-    cacheSheet = ss.insertSheet('月次サマリー');
-    cacheSheet.appendRow(['スコープ', '月', '生成日時', 'サマリー本文', '対象件数']);
-  }
-
-  const cacheRows = cacheSheet.getDataRange().getValues().slice(1);
-  const cached = cacheRows.find(r => r[0] === scope && r[1] === month);
-  if (cached) {
-    return { status: 'ok', cached: true, content: cached[3], articleCount: cached[4], generatedAt: formatCellValue(cached[2]) };
-  }
-
-  // checkOnly=trueの場合、キャッシュがなければGeminiを呼ばずに「未生成」を返す(月を開いただけで生成が走らないようにするため)
-  if (checkOnly) {
-    return { status: 'not_cached' };
-  }
-
-  // 対象記事を集める
-  const articles = [];
-  if (scope === 'academic') {
-    const sheet = ss.getSheetByName(ACADEMIC_SHEET_NAME);
-    if (sheet) {
-      const rows = sheet.getDataRange().getValues().slice(1);
-      rows.forEach(row => {
-        if (row[0] === '') return;
-        const d = new Date(row[4]); // 公開日
-        if (isNaN(d)) return;
-        const label = d.getFullYear() + '年' + (d.getMonth() + 1) + '月';
-        if (label !== month) return;
-        articles.push({ title: row[1], summary: row[8] }); // タイトル, 要約
-      });
-    }
+function onBookmarkClick(btn) {
+  const id = btn.dataset.id;
+  if (bookmarkState[id]) {
+    delete bookmarkState[id];
   } else {
-    const sheet = ss.getSheetByName(SHEET_NAME);
-    const statusColIndex = COLUMNS.indexOf('ステータス');
-    const dateColIndex = COLUMNS.indexOf('公開日');
-    const summaryColIndex = COLUMNS.indexOf('要約');
-    const rows = sheet.getDataRange().getValues().slice(1);
-    rows.forEach(row => {
-      if (row[0] === '') return;
-      if (row[statusColIndex] === '判定待ち' || row[statusColIndex] === '対象外') return;
-      const d = new Date(row[dateColIndex]);
-      if (isNaN(d)) return;
-      const label = d.getFullYear() + '年' + (d.getMonth() + 1) + '月';
-      if (label !== month) return;
-      articles.push({ title: row[1], summary: row[summaryColIndex] });
-    });
+    bookmarkState[id] = true;
   }
-
-  if (articles.length === 0) {
-    return { status: 'error', reason: 'no_articles' };
-  }
-
-  const scopeLabel = scope === 'academic' ? '学術研究(論文)' : 'ニュース';
-  const list = articles.map((a, idx) => `${idx + 1}. ${a.title}\n   ${a.summary}`).join('\n\n');
-  const prompt = `以下は「${month}」に登録された${scopeLabel}の一覧です。
-
-${list}
-
-これらを踏まえて、この月に何が起きていたかを、個別記事の要約を並べるのではなく、傾向・背景を含めた文章として200〜400字程度でまとめてください。事実ベースで記述し、断定できない推測は含めないでください。出力は本文のみとし、前置きや見出しは不要です。`;
-
-  const apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
-  if (!apiKey) {
-    return { status: 'error', reason: 'no_api_key' };
-  }
-
-  const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=' + apiKey;
-  const payload = { contents: [{ parts: [{ text: prompt }] }] };
-
-  const MAX_RETRIES = 3;
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      const res = UrlFetchApp.fetch(url, {
-        method: 'post', contentType: 'application/json', payload: JSON.stringify(payload), muteHttpExceptions: true
-      });
-      const json = JSON.parse(res.getContentText());
-
-      if (json.error) {
-        const isRetryable = json.error.status === 'UNAVAILABLE' || json.error.code === 503;
-        if (isRetryable && attempt < MAX_RETRIES) {
-          Utilities.sleep(attempt * 5000);
-          continue;
-        }
-        return { status: 'error', reason: 'gemini_error' };
-      }
-      if (!json.candidates || !json.candidates[0]) {
-        return { status: 'error', reason: 'no_candidates' };
-      }
-
-      const content = json.candidates[0].content.parts[0].text.trim();
-      const generatedAt = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd HH:mm');
-      cacheSheet.appendRow([scope, month, generatedAt, content, articles.length]);
-
-      return { status: 'ok', cached: false, content: content, articleCount: articles.length, generatedAt: generatedAt };
-    } catch (err) {
-      Logger.log('月次要約生成エラー: ' + err);
-      return { status: 'error', reason: 'exception' };
-    }
-  }
-  return { status: 'error', reason: 'max_retries' };
+  localStorage.setItem("artKbBookmarks", JSON.stringify(bookmarkState));
+  render();
 }
 
-/**
- * 前月分の月次要約(ニュース・学術研究の両方)を自動生成する
- * 月が変わったタイミングで実行することで、データがほぼ確定した状態の月を要約できる
- */
-function generatePastMonthSummaries() {
-  const now = new Date();
-  const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const monthLabel = prevMonthDate.getFullYear() + '年' + (prevMonthDate.getMonth() + 1) + '月';
-
-  Logger.log('前月分の要約を生成します: ' + monthLabel);
-
-  const newsResult = generateMonthSummary('news', monthLabel, false);
-  Logger.log('ニュース(' + monthLabel + '): ' + newsResult.status + (newsResult.reason ? '(' + newsResult.reason + ')' : ''));
-
-  const academicResult = generateMonthSummary('academic', monthLabel, false);
-  Logger.log('学術研究(' + monthLabel + '): ' + academicResult.status + (academicResult.reason ? '(' + academicResult.reason + ')' : ''));
-}
-
-/**
- * 毎月1日の朝8時に、前月分の月次要約を自動生成するトリガーを設定する(初回に一度だけ実行)
- */
-function setupMonthlyTrigger() {
-  ScriptApp.getProjectTriggers().forEach(t => {
-    if (t.getHandlerFunction() === 'generatePastMonthSummaries') ScriptApp.deleteTrigger(t);
-  });
-  ScriptApp.newTrigger('generatePastMonthSummaries')
-    .timeBased()
-    .onMonthDay(1)
-    .atHour(8)
-    .create();
-  Logger.log('毎月1日8時の月次要約自動生成トリガーを設定しました');
-}
-
-function generateFieldDigests() {
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
-  const values = sheet.getDataRange().getValues();
-  const statusColIndex = COLUMNS.indexOf('ステータス');
-  const fieldColIndex = COLUMNS.indexOf('分野');
-  const summaryColIndex = COLUMNS.indexOf('要約');
-  const dateColIndex = COLUMNS.indexOf('公開日');
-  const urlColIndex = COLUMNS.indexOf('元URL');
-
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000);
-  const fields = ['ART/生殖医療テクノロジー動向', '規制・政策動向', '学術研究', '業界動向・統計', '競合動向'];
-
-  const ss = SpreadsheetApp.openById(SHEET_ID);
-  let digestSheet = ss.getSheetByName('分野レポート');
-  if (!digestSheet) {
-    digestSheet = ss.insertSheet('分野レポート');
-    digestSheet.appendRow(['生成日時', '分野', 'レポート本文', '対象記事数', '対象記事リスト(JSON)']);
+function onBookmarkClickAcademic(btn) {
+  const id = btn.dataset.id;
+  if (bookmarkState[id]) {
+    delete bookmarkState[id];
+  } else {
+    bookmarkState[id] = true;
   }
-
-  const results = {}; // { 分野: { content, articleCount } } 呼び出し元(週次レポート)で再利用するため
-
-  fields.forEach(field => {
-    const articles = [];
-    for (let i = 1; i < values.length; i++) {
-      const row = values[i];
-      if (row[0] === '') continue;
-      if (row[statusColIndex] === '判定待ち' || row[statusColIndex] === '対象外') continue;
-      if (row[fieldColIndex] !== field) continue;
-      const pubDate = new Date(row[dateColIndex]);
-      if (isNaN(pubDate) || pubDate < thirtyDaysAgo) continue;
-      articles.push({ title: row[1], summary: row[summaryColIndex], url: row[urlColIndex] });
-    }
-
-    if (articles.length === 0) {
-      Logger.log(field + ': 対象記事なし、スキップ');
-      return;
-    }
-
-    const digest = generateDigestText(field, articles);
-    if (!digest) {
-      Logger.log(field + ': ダイジェスト生成失敗');
-      return;
-    }
-
-    const articleLinks = articles.map(a => ({ title: a.title, url: a.url }));
-    digestSheet.appendRow([
-      Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd HH:mm'),
-      field,
-      digest,
-      articles.length,
-      JSON.stringify(articleLinks)
-    ]);
-    Logger.log(field + ': ダイジェスト生成完了(' + articles.length + '件の記事をもとに)');
-    results[field] = { content: digest, articleCount: articles.length, articles: articleLinks };
-
-    Utilities.sleep(2000);
-  });
-
-  return results;
+  localStorage.setItem("artKbBookmarks", JSON.stringify(bookmarkState));
+  renderAcademicTab();
 }
 
-/**
- * 1分野分の記事リストをGeminiに渡し、傾向・背景を含む文章のダイジェストを生成する
- */
-function generateDigestText(field, articles) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
-  if (!apiKey) {
-    Logger.log('GEMINI_API_KEYが未設定です');
-    return null;
+function onFlagClick(btn) {
+  const id = btn.dataset.id;
+  const newState = !flagState[id];
+
+  if (newState) {
+    flagState[id] = true;
+  } else {
+    delete flagState[id];
   }
+  localStorage.setItem("artKbFlags", JSON.stringify(flagState));
+  render();
 
-  const articlesList = articles.map((a, idx) => `${idx + 1}. ${a.title}\n   ${a.summary}`).join('\n\n');
-
-  const prompt = `あなたはART(生殖補助医療)・SaMD規制・業界動向の専門アナリストです。
-以下は「${field}」分野で、直近30日以内に収集された記事の一覧です。
-
-${articlesList}
-
-これらの記事を踏まえて、「今この分野で何が起きているか」を、個別記事の要約を並べるのではなく、傾向・背景・文脈を含めた文章として300〜500字程度でまとめてください。
-複数の記事に共通する動き(例: 特定の技術領域への投資が増えている、特定の規制動向が進んでいる等)があれば、それを軸に記述してください。
-事実ベースで記述し、断定できない推測は含めないでください。出力は本文のみとし、前置きや見出しは不要です。`;
-
-  const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=' + apiKey;
-  const payload = { contents: [{ parts: [{ text: prompt }] }] };
-
-  const MAX_RETRIES = 3;
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      const res = UrlFetchApp.fetch(url, {
-        method: 'post',
-        contentType: 'application/json',
-        payload: JSON.stringify(payload),
-        muteHttpExceptions: true
-      });
-      const responseText = res.getContentText();
-      const json = JSON.parse(responseText);
-
-      if (json.error) {
-        const isRetryable = json.error.status === 'UNAVAILABLE' || json.error.code === 503;
-        if (isRetryable && attempt < MAX_RETRIES) {
-          Utilities.sleep(attempt * 5000);
-          continue;
-        }
-        Logger.log('ダイジェスト生成APIエラー(' + field + '): ' + JSON.stringify(json.error));
-        return null;
-      }
-      if (!json.candidates || !json.candidates[0]) {
-        Logger.log('ダイジェスト生成: candidatesなし(' + field + ')');
-        return null;
-      }
-      return json.candidates[0].content.parts[0].text.trim();
-    } catch (err) {
-      Logger.log('ダイジェスト生成エラー(' + field + '): ' + err);
-      return null;
-    }
-  }
-  return null;
+  fetch(API_URL, {
+    method: "POST",
+    mode: "no-cors",
+    credentials: "include",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({
+      action: "flagImportance",
+      id: id,
+      title: btn.dataset.title,
+      field: btn.dataset.field,
+      importance: btn.dataset.importance
+    })
+  }).catch(err => console.error("違和感フラグ送信エラー:", err));
 }
 
-function sendWeeklyReport() {
-  const ss = SpreadsheetApp.openById(SHEET_ID);
+document.getElementById("searchInput").addEventListener("input", (e) => {
+  query = e.target.value;
+  render();
+});
 
-  const now = new Date();
-  const sevenDaysAgo = new Date(Date.now() - 7 * 86400000);
-  const periodLabel = Utilities.formatDate(sevenDaysAgo, 'Asia/Tokyo', 'M/d') + '〜' + Utilities.formatDate(now, 'Asia/Tokyo', 'M/d/yyyy');
+document.getElementById("newOnlyToggle").addEventListener("click", () => {
+  showNewOnly = !showNewOnly;
+  const el = document.getElementById("newOnlyToggle");
+  el.classList.toggle("active", showNewOnly);
+  render();
+});
 
-  const mainSheet = ss.getSheetByName(SHEET_NAME);
-  const mainRows = mainSheet.getDataRange().getValues().slice(1).filter(row => row[0] !== '');
-  const statusColIndex = COLUMNS.indexOf('ステータス');
+document.getElementById("bookmarkOnlyToggle").addEventListener("click", () => {
+  showBookmarkedOnly = !showBookmarkedOnly;
+  const el = document.getElementById("bookmarkOnlyToggle");
+  el.classList.toggle("active", showBookmarkedOnly);
+  render();
+});
 
-  // まず分野別ダイジェスト(AIによる業界動向分析)を最新化する
-  const digestResults = generateFieldDigests();
-  const FIELD_ORDER = ['ART/生殖医療テクノロジー動向', '規制・政策動向', '学術研究', '業界動向・統計', '競合動向'];
+document.getElementById("bookmarkOnlyToggleAcademic").addEventListener("click", () => {
+  showBookmarkedOnlyAcademic = !showBookmarkedOnlyAcademic;
+  const el = document.getElementById("bookmarkOnlyToggleAcademic");
+  el.classList.toggle("active", showBookmarkedOnlyAcademic);
+  renderAcademicTab();
+});
 
-  let message = `📊 *ARTナレッジベース 週間レポート(${periodLabel})*\n`;
-  message += `_AIによる業界動向分析(要約版)。詳しくはナレッジベースの「AIによる業界動向分析」タブでご確認ください。_\n\n`;
+document.getElementById("addNewsBtn").addEventListener("click", () => {
+  const form = document.getElementById("addNewsForm");
+  form.style.display = form.style.display === "none" ? "flex" : "none";
+});
 
-  FIELD_ORDER.forEach(field => {
-    const d = digestResults[field];
-    if (!d) return;
-    const excerpt = d.content.length > 120 ? d.content.slice(0, 120) + '…' : d.content;
-    message += `*${field}*\n${excerpt}\n\n`;
-  });
+document.getElementById("addPaperBtn").addEventListener("click", () => {
+  const form = document.getElementById("addPaperForm");
+  form.style.display = form.style.display === "none" ? "flex" : "none";
+});
 
-  // 今週の新着件数だけ軽く触れる(詳細一覧はナレッジベース側で)
-  const newArticleCount = mainRows.filter(row => {
-    const registeredAt = new Date(row[7]);
-    const isRecent = registeredAt >= sevenDaysAgo;
-    const isVisible = row[statusColIndex] !== '対象外' && row[statusColIndex] !== '判定待ち';
-    return isRecent && isVisible;
-  }).length;
-  message += `📰 今週の新着記事: ${newArticleCount}件\n`;
-  message += `\nナレッジベース: https://yukiono-flora.github.io/art-knowledge-base/`;
+document.getElementById("addPaperSubmitBtn").addEventListener("click", () => {
+  const url = document.getElementById("formPaperUrl").value.trim();
+  const note = document.getElementById("paperFormNote");
 
-  postToSlack(message);
-  saveReportHistory(periodLabel, message);
-}
-
-/**
- * 週次レポートの内容を「週次レポート」シートに保存する(UI表示用)
- */
-function saveReportHistory(periodLabel, message) {
-  const ss = SpreadsheetApp.openById(SHEET_ID);
-  let reportSheet = ss.getSheetByName('週次レポート');
-  if (!reportSheet) {
-    reportSheet = ss.insertSheet('週次レポート');
-    reportSheet.appendRow(['送信日時', '対象期間', 'レポート本文']);
-  }
-  reportSheet.appendRow([
-    Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd HH:mm'),
-    periodLabel,
-    message
-  ]);
-}
-
-/**
- * Slack Incoming Webhookにメッセージを送信する
- */
-function postToSlack(text) {
-  const webhookUrl = PropertiesService.getScriptProperties().getProperty('SLACK_WEBHOOK_URL');
-  if (!webhookUrl) {
-    Logger.log('SLACK_WEBHOOK_URLが未設定です');
+  if (!url) {
+    note.textContent = "URLを入力してください";
     return;
   }
 
-  const payload = { text: text };
-  try {
-    const res = UrlFetchApp.fetch(webhookUrl, {
-      method: 'post',
-      contentType: 'application/json',
-      payload: JSON.stringify(payload),
-      muteHttpExceptions: true
+  const btn = document.getElementById("addPaperSubmitBtn");
+  btn.disabled = true;
+  note.textContent = "登録中...(AI判定のため数十秒かかる場合があります)";
+
+  const callbackName = "paperAddCallback_" + Date.now();
+  const timeoutId = setTimeout(() => {
+    if (window[callbackName]) {
+      delete window[callbackName];
+      btn.disabled = false;
+      note.textContent = "応答がありませんでした。時間をおいて再度お試しください。";
+    }
+  }, 60000);
+
+  window[callbackName] = function (result) {
+    clearTimeout(timeoutId);
+    delete window[callbackName];
+    btn.disabled = false;
+
+    if (result.status === "ok") {
+      note.textContent = `登録しました:「${result.title}」。画面を再読み込みすると反映されます。`;
+      document.getElementById("formPaperUrl").value = "";
+    } else if (result.status === "skipped" && result.reason === "duplicate") {
+      note.textContent = "この論文はすでに登録済みです。";
+    } else if (result.reason === "not_found") {
+      note.textContent = "論文情報を取得できませんでした。PubMed・Europe PMC・DOIのリンクか確認してください。";
+    } else {
+      note.textContent = "登録に失敗しました(" + (result.reason || "") + ")。しばらくしてから再度お試しください。";
+    }
+  };
+
+  const script = document.createElement("script");
+  script.src = API_URL + "?action=manualAddPaper&url=" + encodeURIComponent(url) + "&callback=" + callbackName;
+  script.onerror = () => {
+    clearTimeout(timeoutId);
+    delete window[callbackName];
+    btn.disabled = false;
+    note.textContent = "通信に失敗しました。もう一度お試しください。";
+  };
+  document.body.appendChild(script);
+});
+
+const FIELD_ORDER = ["ART/生殖医療テクノロジー動向", "規制・政策動向", "学術研究", "業界動向・統計", "競合動向"];
+
+function switchMainTab(activeId) {
+  ["tabNews", "tabDigest", "tabAcademic"].forEach(id => {
+    document.getElementById(id).classList.toggle("active", id === activeId);
+  });
+  document.getElementById("newsToolbar").style.display = activeId === "tabNews" ? "block" : "none";
+  document.getElementById("cardGrid").style.display = activeId === "tabNews" ? "grid" : "none";
+  document.getElementById("emptyState").style.display = "none";
+  document.getElementById("digestContainer").style.display = activeId === "tabDigest" ? "flex" : "none";
+  document.getElementById("academicToolbar").style.display = activeId === "tabAcademic" ? "block" : "none";
+  document.getElementById("academicGrid").style.display = activeId === "tabAcademic" ? "grid" : "none";
+}
+
+document.getElementById("tabNews").addEventListener("click", () => switchMainTab("tabNews"));
+
+document.getElementById("tabDigest").addEventListener("click", () => {
+  switchMainTab("tabDigest");
+  renderDigestTab();
+});
+
+document.getElementById("tabAcademic").addEventListener("click", () => {
+  switchMainTab("tabAcademic");
+  renderAcademicTab();
+});
+
+function academicPaperMonthLabel(dateStr) {
+  const d = new Date(dateStr);
+  if (isNaN(d)) return null;
+  return `${d.getFullYear()}年${d.getMonth() + 1}月`;
+}
+
+function renderAcademicChips() {
+  const uniqueThemes = [...new Set(PAPERS.map(p => p["テーマ"]).filter(Boolean))];
+  const themeOptions = ["すべて", ...uniqueThemes];
+  const themeEl = document.getElementById("academicThemeChips");
+  themeEl.innerHTML = themeOptions.map(t =>
+    `<div class="region-chip ${t === academicActiveTheme ? "active" : ""}" data-theme="${escapeHtml(t)}">${escapeHtml(t)}</div>`
+  ).join("");
+  themeEl.querySelectorAll(".region-chip").forEach(chip => {
+    chip.addEventListener("click", () => { academicActiveTheme = chip.dataset.theme; renderAcademicTab(); });
+  });
+
+  const impEl = document.getElementById("academicImportanceChips");
+  impEl.innerHTML = IMPORTANCE_LEVELS.map(i =>
+    `<div class="region-chip ${i === academicActiveImportance ? "active" : ""}" data-importance="${i}">${i}</div>`
+  ).join("");
+  impEl.querySelectorAll(".region-chip").forEach(chip => {
+    chip.addEventListener("click", () => { academicActiveImportance = chip.dataset.importance; renderAcademicTab(); });
+  });
+
+  const uniqueRegions = [...new Set(PAPERS.map(p => normalizeRegion(p["国"])).filter(Boolean))];
+  uniqueRegions.sort((a, b) => a.localeCompare(b, "ja"));
+  const regionOptions = ["すべて", ...uniqueRegions];
+  const regionEl = document.getElementById("academicRegionChips");
+  regionEl.innerHTML = regionOptions.map(r =>
+    `<div class="region-chip ${r === academicActiveRegion ? "active" : ""}" data-region="${r}">${r}</div>`
+  ).join("");
+  regionEl.querySelectorAll(".region-chip").forEach(chip => {
+    chip.addEventListener("click", () => { academicActiveRegion = chip.dataset.region; renderAcademicTab(); });
+  });
+
+  const uniqueMonths = [...new Set(PAPERS.map(p => academicPaperMonthLabel(p["公開日"])).filter(Boolean))];
+  const parseMonth = (s) => { const m = s.match(/(\d+)年(\d+)月/); return m ? { year: parseInt(m[1]), month: parseInt(m[2]) } : { year: 0, month: 0 }; };
+  uniqueMonths.sort((a, b) => {
+    const pa = parseMonth(a), pb = parseMonth(b);
+    return (pb.year * 100 + pb.month) - (pa.year * 100 + pa.month);
+  });
+  const thisYear = new Date().getFullYear();
+  const currentYearAcademicMonths = uniqueMonths.filter(m => parseMonth(m).year === thisYear);
+  const olderAcademicMonths = uniqueMonths.filter(m => parseMonth(m).year !== thisYear);
+
+  const monthEl = document.getElementById("academicMonthChips");
+  const academicMonthsToShow = showOlderAcademicMonths ? [...currentYearAcademicMonths, ...olderAcademicMonths] : currentYearAcademicMonths;
+  let academicMonthHtml = ["すべて", ...academicMonthsToShow].map(m =>
+    `<div class="region-chip ${m === academicActiveMonth ? "active" : ""}" data-month="${m}">${m}</div>`
+  ).join("");
+  if (olderAcademicMonths.length > 0) {
+    academicMonthHtml += `<div class="region-chip" id="olderAcademicMonthsToggle">${showOlderAcademicMonths ? "過去の月を隠す ▲" : `過去の月を見る(${olderAcademicMonths.length}) ▼`}</div>`;
+  }
+  monthEl.innerHTML = academicMonthHtml;
+
+  monthEl.querySelectorAll(".region-chip[data-month]").forEach(chip => {
+    chip.addEventListener("click", () => {
+      academicActiveMonth = chip.dataset.month;
+      renderAcademicTab();
+      updateMonthSummaryPanel("academic", academicActiveMonth, "academicMonthSummaryPanel");
     });
-    Logger.log('Slack送信結果: ' + res.getContentText());
-  } catch (err) {
-    Logger.log('Slack送信エラー: ' + err);
+  });
+  const olderAcademicToggle = document.getElementById("olderAcademicMonthsToggle");
+  if (olderAcademicToggle) {
+    olderAcademicToggle.addEventListener("click", () => {
+      showOlderAcademicMonths = !showOlderAcademicMonths;
+      renderAcademicTab();
+    });
   }
 }
 
 /**
- * 毎週月曜9時に週次レポートを自動送信するトリガーを設定する(初回に一度だけ実行)
+ * 月チップをクリックした際に、統計を即時表示し、AI要約生成ボタンを設置する
+ * scope: "news" または "academic"
  */
-function setupWeeklyTrigger() {
-  ScriptApp.getProjectTriggers().forEach(t => {
-    if (t.getHandlerFunction() === 'sendWeeklyReport') ScriptApp.deleteTrigger(t);
+function updateMonthSummaryPanel(scope, month, panelId) {
+  const panel = document.getElementById(panelId);
+  if (month === "すべて") {
+    panel.style.display = "none";
+    return;
+  }
+
+  const source = scope === "academic" ? PAPERS : DATA;
+  const getMonthLabel = scope === "academic"
+    ? (p) => academicPaperMonthLabel(p["公開日"])
+    : (item) => itemMonthLabel(item.date);
+  const monthItems = source.filter(x => getMonthLabel(x) === month);
+
+  const counts = { "高": 0, "中": 0, "低": 0 };
+  monthItems.forEach(x => {
+    const imp = scope === "academic" ? x["重要度"] : x.importanceLabel;
+    if (counts[imp] !== undefined) counts[imp]++;
   });
-  ScriptApp.newTrigger('sendWeeklyReport')
-    .timeBased()
-    .onWeekDay(ScriptApp.WeekDay.MONDAY)
-    .atHour(9)
-    .create();
-  Logger.log('毎週月曜9時の週次レポート送信トリガーを設定しました');
+
+  panel.style.display = "block";
+  panel.innerHTML = `
+    <div class="month-summary-stats">
+      <div class="month-summary-stat-item"><b>${monthItems.length}件</b><br>総件数</div>
+      <div class="month-summary-stat-item"><b style="color:#C0392B;">${counts["高"]}</b> / <b style="color:#B9660B;">${counts["中"]}</b> / <b>${counts["低"]}</b><br>重要度 高/中/低</div>
+    </div>
+    <div id="${panelId}_body"></div>
+  `;
+
+  renderMonthSummaryBody(scope, month, panelId);
 }
 
-function setupDailyTrigger() {
-  ScriptApp.getProjectTriggers().forEach(t => {
-    if (t.getHandlerFunction() === 'collectNews') ScriptApp.deleteTrigger(t);
-  });
-  ScriptApp.newTrigger('collectNews')
-    .timeBased()
-    .everyDays(1)
-    .atHour(7)
-    .create();
-  Logger.log('毎日7時の自動実行トリガーを設定しました');
+let monthSummaryClientCache = {}; // { "scope:month": {content, articleCount, generatedAt} } セッション内の再問い合わせを減らすためのキャッシュ
+
+function fetchMonthSummary(scope, month, checkOnly, onResult) {
+  const callbackName = "monthSummaryCallback_" + Date.now() + "_" + Math.floor(Math.random() * 10000);
+  const timeoutId = setTimeout(() => {
+    if (window[callbackName]) {
+      delete window[callbackName];
+      onResult({ status: "error", reason: "timeout" });
+    }
+  }, 60000);
+
+  window[callbackName] = function (result) {
+    clearTimeout(timeoutId);
+    delete window[callbackName];
+    onResult(result);
+  };
+
+  const script = document.createElement("script");
+  script.src = API_URL + "?action=generateMonthSummary&scope=" + encodeURIComponent(scope)
+    + "&month=" + encodeURIComponent(month) + "&checkOnly=" + (checkOnly ? "true" : "false")
+    + "&callback=" + callbackName;
+  script.onerror = () => {
+    clearTimeout(timeoutId);
+    delete window[callbackName];
+    onResult({ status: "error", reason: "network" });
+  };
+  document.body.appendChild(script);
 }
+
+function renderMonthSummaryBody(scope, month, panelId) {
+  const body = document.getElementById(`${panelId}_body`);
+  if (!body) return;
+
+  const cacheKey = scope + ":" + month;
+
+  // すでにこのセッション内で取得済みなら、通信せずそのまま表示
+  if (monthSummaryClientCache[cacheKey]) {
+    const r = monthSummaryClientCache[cacheKey];
+    body.innerHTML = `
+      <div class="month-summary-text">${escapeHtml(r.content)}</div>
+      <div class="month-summary-note">対象${r.articleCount}件 ・ 生成日時: ${escapeHtml(r.generatedAt)}</div>
+    `;
+    return;
+  }
+
+  // まずGeminiを呼ばずにサーバー側のキャッシュだけ確認する
+  body.innerHTML = `<div class="month-summary-note">確認中...</div>`;
+  fetchMonthSummary(scope, month, true, (result) => {
+    if (result.status === "ok") {
+      monthSummaryClientCache[cacheKey] = result;
+      body.innerHTML = `
+        <div class="month-summary-text">${escapeHtml(result.content)}</div>
+        <div class="month-summary-note">対象${result.articleCount}件 ・ 生成日時: ${escapeHtml(result.generatedAt)}</div>
+      `;
+      return;
+    }
+    // まだ生成されていない場合だけ、ボタンを表示する
+    body.innerHTML = `<button class="month-summary-gen-btn" id="${panelId}_genBtn">🧠 AIで要約を生成</button>`;
+    document.getElementById(`${panelId}_genBtn`).addEventListener("click", (e) => {
+      const btn = e.target;
+      btn.disabled = true;
+      btn.textContent = "生成中...(件数が多い月は最大1分ほどかかります)";
+
+      fetchMonthSummary(scope, month, false, (genResult) => {
+        if (genResult.status === "ok") {
+          monthSummaryClientCache[cacheKey] = genResult;
+          body.innerHTML = `
+            <div class="month-summary-text">${escapeHtml(genResult.content)}</div>
+            <div class="month-summary-note">対象${genResult.articleCount}件 ・ 生成日時: ${escapeHtml(genResult.generatedAt)}</div>
+          `;
+        } else if (genResult.reason === "timeout") {
+          btn.disabled = false;
+          btn.textContent = "🧠 AIで要約を生成";
+          body.innerHTML += `<div class="month-summary-note">応答がありませんでした。時間をおいて再度お試しください。</div>`;
+        } else {
+          body.innerHTML = `<div class="month-summary-note">要約の生成に失敗しました(${escapeHtml(genResult.reason || "")})。しばらくしてから再度お試しください。</div>`;
+        }
+      });
+    });
+  });
+}
+
+function renderAcademicTab() {
+  renderAcademicChips();
+  const grid = document.getElementById("academicGrid");
+
+  if (PAPERS.length === 0) {
+    grid.innerHTML = `<div class="digest-empty">まだ論文が収集されていません。Apps Scriptで collectAcademicPapers を実行すると収集されます。</div>`;
+    document.getElementById("academicCountLine").textContent = "";
+    return;
+  }
+
+  const q = academicQuery.trim().toLowerCase();
+  const filtered = PAPERS.filter(p => {
+    const matchesTheme = academicActiveTheme === "すべて" || p["テーマ"] === academicActiveTheme;
+    const matchesImportance = academicActiveImportance === "すべて" || p["重要度"] === academicActiveImportance;
+    const matchesRegion = academicActiveRegion === "すべて" || normalizeRegion(p["国"]) === academicActiveRegion;
+    const matchesMonth = academicActiveMonth === "すべて" || academicPaperMonthLabel(p["公開日"]) === academicActiveMonth;
+    const title = (p["タイトル"] || "").toLowerCase();
+    const summary = (p["要約"] || "").toLowerCase();
+    const matchesQuery = !q || title.includes(q) || summary.includes(q);
+    const matchesBookmark = !showBookmarkedOnlyAcademic || !!bookmarkState["paper:" + p["PMID"]];
+    return matchesTheme && matchesImportance && matchesRegion && matchesMonth && matchesQuery && matchesBookmark;
+  });
+
+  document.getElementById("academicCountLine").textContent = `${filtered.length}件表示中(全${PAPERS.length}件)`;
+
+  if (filtered.length === 0) {
+    grid.innerHTML = `<div class="digest-empty">該当する論文がありません。検索条件を変えてみてください。</div>`;
+    return;
+  }
+
+  const sorted = [...filtered].sort((a, b) => new Date(b["公開日"]) - new Date(a["公開日"]));
+
+  grid.innerHTML = sorted.map(p => `
+    <div class="card">
+      <div class="card-top">
+        <span class="field-tag" style="border-left-color:#6D4AA8;color:#6D4AA8;">学術研究</span>
+        <div class="card-top-right">
+          <span class="edit-toggle-btn" title="PMID: ${escapeHtml(p["PMID"])}">🔬</span>
+        </div>
+      </div>
+      <div class="card-top-row2">
+        <div class="hashtag-row">
+          ${p["テーマ"] ? `<span class="region-tag">${escapeHtml(p["テーマ"])}</span>` : ""}
+          ${p["国"] ? `<span class="region-tag">${escapeHtml(p["国"])}</span>` : ""}
+        </div>
+      </div>
+      <div class="card-title"><a href="${escapeHtml(p["元URL"])}" target="_blank" rel="noopener">${escapeHtml(p["タイトル"])}</a></div>
+      <div class="card-summary">${escapeHtml(p["要約"])}</div>
+      <div class="meta-row">
+        <span class="importance-badge importance-${IMPORTANCE_MAP[p["重要度"]] || "mid"}">重要度: ${escapeHtml(p["重要度"] || "中")}</span>
+        <span style="font-size:11.5px;color:#9AA3AB;">${escapeHtml(p["ジャーナル"] || "")}</span>
+      </div>
+      ${p["判定理由"] ? `<div class="reason-body" style="display:block;">${escapeHtml(p["判定理由"])}</div>` : ""}
+      <div class="meta-row">
+        <span class="source-badge">${(p["元URL"] || "").includes("pubmed.ncbi.nlm.nih.gov") ? "PubMed" : "Europe PMC"}</span>
+        <span style="font-size:11.5px;color:#9AA3AB;">${formatDisplayDate(p["公開日"])}</span>
+      </div>
+      <button class="bookmark-btn-full ${bookmarkState["paper:" + p["PMID"]] ? "active" : ""}" data-id="paper:${escapeHtml(p["PMID"])}">
+        🔖 ${bookmarkState["paper:" + p["PMID"]] ? "ブックマーク済み" : "ブックマークする"}
+      </button>
+    </div>
+  `).join("");
+
+  grid.querySelectorAll(".bookmark-btn-full").forEach(btn => {
+    btn.addEventListener("click", () => onBookmarkClickAcademic(btn));
+  });
+}
+
+document.getElementById("academicSearchInput").addEventListener("input", (e) => {
+  academicQuery = e.target.value;
+  renderAcademicTab();
+});
+
+function renderDigestTab() {
+  const container = document.getElementById("digestContainer");
+  const hasAny = FIELD_ORDER.some(f => (FIELD_DIGEST_HISTORY[f] || []).length > 0);
+
+  if (!hasAny) {
+    container.innerHTML = `<div class="digest-empty">まだレポートが生成されていません。Apps Scriptで generateFieldDigests を実行すると生成されます。</div>`;
+    return;
+  }
+
+  container.innerHTML = FIELD_ORDER.map(field => {
+    const memos = FIELD_MEMOS[field] || [];
+    const memoListHtml = memos.map(m => `
+      <div class="digest-memo-item">
+        <div class="digest-memo-item-top">
+          <span class="digest-memo-author">${escapeHtml(m.author)}</span>
+          <span class="digest-memo-date">${escapeHtml(m.date)}</span>
+        </div>
+        <div class="digest-memo-content">${escapeHtml(m.content)}</div>
+      </div>
+    `).join("");
+
+    const memoSectionHtml = `
+      <div class="digest-memo-section">
+        <div class="digest-memo-header">💬 メモ ${memos.length}件</div>
+        <div class="digest-memo-list">${memoListHtml}</div>
+        <div class="digest-memo-input-row">
+          <input type="text" class="digest-memo-name-input" placeholder="お名前(任意)" data-field="${escapeHtml(field)}" value="${escapeHtml(savedAuthorName)}">
+          <input type="text" class="digest-memo-input" placeholder="気づいたことをメモ..." data-field="${escapeHtml(field)}">
+          <button class="digest-memo-submit-btn" data-field="${escapeHtml(field)}">投稿</button>
+        </div>
+      </div>
+    `;
+
+    const history = FIELD_DIGEST_HISTORY[field] || [];
+    if (history.length === 0) return `
+      <div class="digest-card">
+        <div class="digest-card-title">${field}</div>
+        <div class="digest-empty">この分野はまだレポートが生成されていません。</div>
+        ${memoSectionHtml}
+      </div>
+    `;
+
+    const selectedIdx = Math.min(digestSelectedIndex[field] || 0, history.length - 1);
+    const d = history[selectedIdx];
+    const articleListHtml = (d.articles || []).map(a => `
+      <li><a href="${escapeHtml(a.url)}" target="_blank" rel="noopener">${escapeHtml(a.title)}</a></li>
+    `).join("");
+    const dateOptionsHtml = history.map((h, idx) =>
+      `<option value="${idx}" ${idx === selectedIdx ? "selected" : ""}>${escapeHtml(h.generatedAt)}${idx === 0 ? "(最新)" : ""}</option>`
+    ).join("");
+
+    return `
+      <div class="digest-card">
+        <div class="digest-card-title-row">
+          <div class="digest-card-title">${field}</div>
+          <select class="digest-date-select" data-field="${escapeHtml(field)}">${dateOptionsHtml}</select>
+        </div>
+        <div class="digest-card-body">${escapeHtml(d.content)}</div>
+        <div class="digest-card-meta digest-card-meta-toggle" data-field="${escapeHtml(field)}">対象記事数: ${d.articleCount}件</div>
+        <ul class="digest-article-list" data-field-list="${escapeHtml(field)}" style="display:none;">${articleListHtml}</ul>
+        ${memoSectionHtml}
+      </div>
+    `;
+  }).join("");
+
+  container.querySelectorAll(".digest-date-select").forEach(sel => {
+    sel.addEventListener("change", () => {
+      digestSelectedIndex[sel.dataset.field] = parseInt(sel.value, 10);
+      renderDigestTab();
+    });
+  });
+
+  container.querySelectorAll(".digest-card-meta-toggle").forEach(el => {
+    el.addEventListener("click", () => {
+      const list = container.querySelector(`.digest-article-list[data-field-list="${el.dataset.field}"]`);
+      const arrow = el.querySelector(".digest-toggle-arrow");
+      const isOpen = list.style.display !== "none";
+      list.style.display = isOpen ? "none" : "block";
+      if (arrow) arrow.textContent = isOpen ? "▼" : "▲";
+    });
+  });
+
+  container.querySelectorAll(".digest-memo-submit-btn").forEach(btn => {
+    btn.addEventListener("click", () => onDigestMemoSubmit(btn));
+  });
+  container.querySelectorAll(".digest-memo-input").forEach(input => {
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        const btn = container.querySelector(`.digest-memo-submit-btn[data-field="${input.dataset.field}"]`);
+        onDigestMemoSubmit(btn);
+      }
+    });
+  });
+}
+
+function onDigestMemoSubmit(btn) {
+  const field = btn.dataset.field;
+  const nameInput = document.querySelector(`.digest-memo-name-input[data-field="${field}"]`);
+  const contentInput = document.querySelector(`.digest-memo-input[data-field="${field}"]`);
+  const content = contentInput.value.trim();
+  if (!content) return;
+
+  const rawName = nameInput.value.trim();
+  const author = rawName || "匿名";
+  localStorage.setItem("artKbAuthorName", rawName);
+  savedAuthorName = rawName;
+
+  if (!FIELD_MEMOS[field]) FIELD_MEMOS[field] = [];
+  FIELD_MEMOS[field].push({ author, content, date: "たった今" });
+  contentInput.value = "";
+  renderDigestTab();
+
+  fetch(API_URL, {
+    method: "POST",
+    mode: "no-cors",
+    credentials: "include",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({ action: "addFieldMemo", field: field, author: author, content: content })
+  }).catch(err => console.error("分野メモ送信エラー:", err));
+}
+
+document.getElementById("opinionToggleBtn").addEventListener("click", () => {
+  const form = document.getElementById("opinionForm");
+  form.style.display = form.style.display === "none" ? "flex" : "none";
+});
+
+document.getElementById("opinionSubmitBtn").addEventListener("click", () => {
+  const content = document.getElementById("opinionContent").value.trim();
+  if (!content) {
+    document.getElementById("opinionNote").textContent = "内容を入力してください";
+    return;
+  }
+  const author = document.getElementById("opinionAuthor").value.trim();
+
+  fetch(API_URL, {
+    method: "POST",
+    mode: "no-cors",
+    credentials: "include",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({ action: "generalFeedback", content: content, author: author })
+  }).catch(err => console.error("全体意見送信エラー:", err));
+
+  document.getElementById("opinionNote").textContent = "送信しました。ありがとうございます。";
+  document.getElementById("opinionContent").value = "";
+});
+
+document.getElementById("criteriaToggleBtn").addEventListener("click", () => {
+  const panel = document.getElementById("criteriaPanel");
+  if (panel.style.display === "none") {
+    panel.innerHTML = `
+      <div style="font-size:13px; line-height:1.9; color:var(--gray-body);">
+        <strong style="color:var(--navy);">分野の分類</strong><br>
+        Web検索(自動収集)は、ART/生殖医療テクノロジー動向・規制政策動向・学術研究・業界動向統計・競合動向のいずれにも該当しない記事、および個人の体験談・芸能ニュースは「対象外」として登録しません。手動追加の記事は、社内メンバーの一次判断を尊重し「対象外」にはせず、必ずいずれかの分野(該当なしの場合は「その他」)に分類します。<br><br>
+        <strong style="color:var(--navy);">重要度の判定基準</strong><br>
+        ・<b>高</b>: 公式発表・臨床データ・法改正・規制当局の正式決定など一次情報であり、かつARCSの事業領域(生殖医療AI・SaMD・ICSI自動化)の意思決定に直接影響するもの<br>
+        ・<b>中</b>: 業界動向・研究発表・隣接領域の情報で、参考情報として有用だが即座の意思決定には直結しないもの<br>
+        ・<b>低</b>: 統計の微修正、単発の展示会情報、間接的にしか関連しない一般ニュースなど<br>
+        各記事には、この基準のどれに該当したかをAIが一言で記録しており、カード下部の「🔍判定理由を見る」から確認できます。<br><br>
+        <strong style="color:var(--navy);">部門タグの判定基準</strong><br>
+        ・開発(AI・医療機器開発): AI技術・アルゴリズム、ロボティクス・自動化技術、機器設計、技術実装事例<br>
+        ・臨床開発: 臨床試験・治験、臨床アウトカム、有効性・安全性データ<br>
+        ・品質保証: 品質マネジメントシステム、ISO規格、品質不具合、リスクマネジメント<br>
+        ・薬事: 規制当局動向、承認・認証プロセス、法改正、薬事区分<br>
+        ・事業開発: 市場規模、資金調達、企業提携・M&A、事業戦略<br><br>
+        <strong style="color:var(--navy);">競合動向の対象</strong><br>
+        Overture Life、Conceivable Life Sciences、BAIBYS、IVF2.0/SiD、VitruvianMD、NeoGenix Fertility、Fertilis、BetterFit、Optimaton.ai、SpOvum/RoboICSI、Fertsyなど、生殖医療AI・ICSI自動化領域の競合企業に関する記事を対象とします。<br><br>
+        <span style="font-size:11.5px; color:#9AA3AB;">※この基準はAIへの指示内容(プロンプト)をそのまま表示しています。実際の判定と乖離が見つかった場合は、随時見直します。</span>
+      </div>
+    `;
+    panel.style.display = "flex";
+  } else {
+    panel.style.display = "none";
+  }
+});
+
+document.getElementById("reportToggleBtn").addEventListener("click", () => {
+  const panel = document.getElementById("reportPanel");
+  if (panel.style.display === "none") {
+    renderReportPanel();
+    panel.style.display = "flex";
+  } else {
+    panel.style.display = "none";
+  }
+});
+
+function renderReportPanel() {
+  const panel = document.getElementById("reportPanel");
+  if (REPORTS.length === 0) {
+    panel.innerHTML = `<div style="font-size:13px;color:#9AA3AB;">まだ週次レポートは送信されていません。</div>`;
+    return;
+  }
+  panel.innerHTML = REPORTS.map((r, idx) => `
+    <div style="border:1px solid var(--gray-line);border-radius:8px;">
+      <div class="report-header" data-report-idx="${idx}" style="padding:10px 14px;cursor:pointer;font-size:13px;font-weight:600;color:var(--navy);display:flex;justify-content:space-between;">
+        <span>📅 ${escapeHtml(r.period)}(送信: ${escapeHtml(r.sentAt)})</span>
+        <span style="color:#9AA3AB;font-weight:400;">クリックで開閉</span>
+      </div>
+      <div class="report-body" data-report-body-idx="${idx}" style="display:none;padding:0 14px 14px;white-space:pre-wrap;font-size:12.5px;line-height:1.7;color:var(--gray-body);">${formatReportContent(r.content)}</div>
+    </div>
+  `).join("");
+
+  panel.querySelectorAll(".report-header").forEach(header => {
+    header.addEventListener("click", () => {
+      const body = panel.querySelector(`.report-body[data-report-body-idx="${header.dataset.reportIdx}"]`);
+      body.style.display = body.style.display === "none" ? "block" : "none";
+    });
+  });
+}
+
+document.getElementById("addNewsSubmitBtn").addEventListener("click", () => {
+  const url = document.getElementById("formUrl").value.trim();
+  const fallbackTitle = document.getElementById("formFallbackTitle").value.trim();
+
+  if (!url) {
+    document.getElementById("formNote").textContent = "URLを入力してください";
+    return;
+  }
+
+  const submitBtn = document.getElementById("addNewsSubmitBtn");
+  submitBtn.disabled = true;
+  document.getElementById("formNote").textContent = "登録中...";
+
+  const callbackName = "artKbAddCallback_" + Date.now();
+  const timeoutId = setTimeout(() => {
+    if (window[callbackName]) {
+      delete window[callbackName];
+      submitBtn.disabled = false;
+      document.getElementById("formNote").textContent = "応答がありませんでした。時間をおいて再度お試しください。";
+    }
+  }, 20000);
+
+  window[callbackName] = function (result) {
+    clearTimeout(timeoutId);
+    delete window[callbackName];
+    submitBtn.disabled = false;
+
+    if (result.status === "ok") {
+      document.getElementById("formNote").textContent = "登録しました。「判定待ち」の状態で表示されます(翌朝AIが分野・重要度・国を判定します)。画面を再読み込みしてください。";
+      document.getElementById("formUrl").value = "";
+      document.getElementById("formFallbackTitle").value = "";
+      document.getElementById("formFallbackRow").style.display = "none";
+    } else if (result.status === "skipped" && result.reason === "duplicate_url") {
+      document.getElementById("formNote").textContent = "このURLはすでに登録済みです。";
+    } else if (result.reason === "title_not_found") {
+      document.getElementById("formFallbackRow").style.display = "flex";
+      document.getElementById("formNote").textContent = "ページからタイトルを自動取得できませんでした。上の欄にタイトルを入力して、もう一度「登録する」を押してください。";
+    } else {
+      document.getElementById("formNote").textContent = "登録に失敗しました。URLが正しいか確認してください。";
+    }
+  };
+
+  const script = document.createElement("script");
+  script.src = API_URL + "?action=manualAdd&url=" + encodeURIComponent(url)
+    + "&fallbackTitle=" + encodeURIComponent(fallbackTitle)
+    + "&callback=" + callbackName;
+  script.onerror = () => {
+    clearTimeout(timeoutId);
+    delete window[callbackName];
+    submitBtn.disabled = false;
+    document.getElementById("formNote").textContent = "通信に失敗しました。もう一度お試しください。";
+  };
+  document.body.appendChild(script);
+});
+
+loadData();
+</script>
+
+</body>
+</html>
