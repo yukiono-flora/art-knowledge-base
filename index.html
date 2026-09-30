@@ -965,7 +965,7 @@
       <button class="add-news-submit-btn" id="addPaperSubmitBtn">登録する</button>
     </div>
     <div style="font-size:11.5px;color:#9AA3AB;">
-      重要度・国・部門・要約はAIがその場で判定します。
+      重要度・国・要約はAIがその場で判定します。
     </div>
     <div class="form-note" id="paperFormNote"></div>
   </div>
@@ -1844,13 +1844,10 @@ function renderAcademicTab() {
     <div class="card">
       <div class="card-top">
         <span class="field-tag" style="border-left-color:#6D4AA8;color:#6D4AA8;">学術研究</span>
-        <div class="card-top-right">
-          <span class="edit-toggle-btn" title="PMID: ${escapeHtml(p["PMID"])}">🔬</span>
-        </div>
       </div>
       <div class="card-top-row2">
         <div class="hashtag-row">
-          ${p["テーマ"] ? `<span class="region-tag">${escapeHtml(p["テーマ"])}</span>` : ""}
+          ${(p["テーマ"] && p["テーマ"] !== "手動追加") ? `<span class="region-tag">${escapeHtml(p["テーマ"])}</span>` : ""}
           ${p["国"] ? `<span class="region-tag">${escapeHtml(p["国"])}</span>` : ""}
         </div>
       </div>
