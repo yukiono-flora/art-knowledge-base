@@ -1177,7 +1177,7 @@ const API_URL = "https://script.google.com/a/macros/arcs-inc.jp/s/AKfycbydHNsQDT
 
 const IMPORTANCE_MAP = { "高": "high", "中": "mid", "低": "low" };
 
-const FIELDS = ["すべて", "ART/生殖医療テクノロジー動向", "規制・政策動向", "学術研究", "業界動向・統計", "競合動向", "その他"];
+const FIELDS = ["すべて", "ART/生殖医療テクノロジー動向", "規制・政策動向", "業界動向・統計", "競合動向", "その他"];
 const DEPARTMENTS = ["すべて", "開発", "臨床開発", "品質保証", "薬事", "事業開発"];
 const IMPORTANCE_LEVELS = ["すべて", "高", "中", "低"];
 let REGIONS = ["すべて"];
@@ -1631,7 +1631,6 @@ function render() {
           <select class="edit-field-select" data-id="${item.id}">
             <option value="ART/生殖医療テクノロジー動向" ${item.field === "ART/生殖医療テクノロジー動向" ? "selected" : ""}>ART/生殖医療テクノロジー動向</option>
             <option value="規制・政策動向" ${item.field === "規制・政策動向" ? "selected" : ""}>規制・政策動向</option>
-            <option value="学術研究" ${item.field === "学術研究" ? "selected" : ""}>学術研究</option>
             <option value="業界動向・統計" ${item.field === "業界動向・統計" ? "selected" : ""}>業界動向・統計</option>
             <option value="競合動向" ${item.field === "競合動向" ? "selected" : ""}>競合動向</option>
             <option value="その他" ${item.field === "その他" ? "selected" : ""}>その他</option>
@@ -1828,7 +1827,6 @@ function formatReportContent(content) {
 const FIELD_COLORS = {
   "ART/生殖医療テクノロジー動向": { bg: "#EEEDFE", color: "#6D4AA8" },
   "規制・政策動向": { bg: "#FAECE7", color: "#C0392B" },
-  "学術研究": { bg: "#E1F5EE", color: "#1D8348" },
   "業界動向・統計": { bg: "#E4EFF9", color: "#1F6FB2" },
   "競合動向": { bg: "#FDEEDC", color: "#B9660B" },
   "その他": { bg: "#F1F3F5", color: "#5A6570" }
@@ -2044,7 +2042,7 @@ document.getElementById("addPaperSubmitBtn").addEventListener("click", () => {
   document.body.appendChild(script);
 });
 
-const FIELD_ORDER = ["ART/生殖医療テクノロジー動向", "規制・政策動向", "学術研究", "業界動向・統計", "競合動向"];
+const FIELD_ORDER = ["ART/生殖医療テクノロジー動向", "規制・政策動向", "業界動向・統計", "競合動向"];
 
 function switchMainTab(activeId) {
   ["tabNews", "tabDigest", "tabAcademic"].forEach(id => {
@@ -2539,7 +2537,7 @@ document.getElementById("criteriaToggleBtn").addEventListener("click", () => {
     panel.innerHTML = `
       <div style="font-size:13px; line-height:1.9; color:var(--gray-body);">
         <strong style="color:var(--navy);">分野の分類</strong><br>
-        Web検索(自動収集)は、ART/生殖医療テクノロジー動向・規制政策動向・学術研究・業界動向統計・競合動向のいずれにも該当しない記事、および個人の体験談・芸能ニュースは「対象外」として登録しません。手動追加の記事は、社内メンバーの一次判断を尊重し「対象外」にはせず、必ずいずれかの分野(該当なしの場合は「その他」)に分類します。<br><br>
+        Web検索(自動収集)は、ART/生殖医療テクノロジー動向・規制政策動向・業界動向統計・競合動向のいずれにも該当しない記事、および個人の体験談・芸能ニュースは「対象外」として登録しません。なお、論文(PubMed・Europe PMC・DOI)は、このニュース一覧ではなく「🔬 学術研究」タブで扱います。手動追加の記事は、社内メンバーの一次判断を尊重し「対象外」にはせず、必ずいずれかの分野(該当なしの場合は「その他」)に分類します。<br><br>
         <strong style="color:var(--navy);">重要度の判定基準</strong><br>
         ・<b>高</b>: 公式発表・臨床データ・法改正・規制当局の正式決定など一次情報であり、かつARCSの事業領域(生殖医療AI・SaMD・ICSI自動化)の意思決定に直接影響するもの<br>
         ・<b>中</b>: 業界動向・研究発表・隣接領域の情報で、参考情報として有用だが即座の意思決定には直結しないもの<br>
