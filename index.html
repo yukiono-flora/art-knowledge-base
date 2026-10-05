@@ -632,13 +632,27 @@
   .error-state { color: #B23A3A; }
   .manual-add-status {
     display: none;
+    margin-bottom: 8px;
+  }
+  .manual-add-status-summary {
+    text-align: right;
+    font-size: 12px;
+    color: var(--blue);
+    cursor: pointer;
+    user-select: none;
+  }
+  .manual-add-status-summary:hover { text-decoration: underline; }
+  .manual-add-status-summary .pending-count { color: #B9660B; font-weight: 700; }
+  .manual-add-status-list {
+    display: none;
     background: var(--white);
     border: 1px solid var(--gray-line);
     border-radius: 10px;
     padding: 10px 14px;
-    margin-bottom: 10px;
+    margin-top: 6px;
     font-size: 12.5px;
   }
+  .manual-add-status-list.open { display: block; }
   .manual-add-status-title { font-weight: 700; color: var(--navy); margin-bottom: 6px; font-size: 12px; }
   .manual-add-status-item {
     display: flex;
@@ -1266,45 +1280,57 @@ function refreshData(onDone) {
   document.body.appendChild(script);
 }
 
-// 「最近の手動追加」: 追加した記事と、判定の状況(判定待ち/完了)を表示する
-function renderManualAddStatus() {
-  const newsEl = document.getElementById("manualAddStatusNews");
-  const paperEl = document.getElementById("manualAddStatusPaper");
-  if (!newsEl || !paperEl) return;
+// 「最近の手動追加」: 1行に折りたたみ、クリックで開くと、追加した記事と判定の状況(判定待ち/完了)を表示する
+const manualStatusOpen = { news: false, paper: false };
 
-  const manualNews = DATA
+function renderManualAddStatus() {
+  const newsItems = DATA
     .filter(d => (d.source || "").indexOf("手動追加") === 0)
     .sort((a, b) => new Date(b.registeredAt) - new Date(a.registeredAt))
     .slice(0, 5);
-  if (manualNews.length === 0) {
-    newsEl.style.display = "none";
-  } else {
-    newsEl.style.display = "block";
-    newsEl.innerHTML = `<div class="manual-add-status-title">最近の手動追加(直近${manualNews.length}件)</div>` + manualNews.map(d => {
-      const pending = d.status === "判定待ち";
-      return `<div class="manual-add-status-item">
-        <span class="add-status-badge ${pending ? "pending" : "done"}">${pending ? "⏳ 判定待ち" : "✅ 判定完了"}</span>
-        <a href="${escapeHtml(d.url)}" target="_blank" rel="noopener">${escapeHtml(d.title)}</a>
-        <span class="add-status-date">${escapeHtml(String(d.registeredAt || "").slice(0, 16))}</span>
-      </div>`;
-    }).join("") + (manualNews.some(d => d.status === "判定待ち") ? `<div class="edit-note">「判定待ち」の記事は、翌朝の自動収集のタイミングでAIが分野・重要度・国を判定します。</div>` : "");
-  }
-
-  const manualPapers = (PAPERS || [])
+  const paperItems = (PAPERS || [])
     .filter(p => p["テーマ"] === "手動追加")
     .sort((a, b) => new Date(b["登録日時"]) - new Date(a["登録日時"]))
     .slice(0, 5);
-  if (manualPapers.length === 0) {
-    paperEl.style.display = "none";
-  } else {
-    paperEl.style.display = "block";
-    paperEl.innerHTML = `<div class="manual-add-status-title">最近の手動追加(直近${manualPapers.length}件)</div>` + manualPapers.map(p => `
-      <div class="manual-add-status-item">
-        <span class="add-status-badge done">✅ 判定完了</span>
-        <a href="${escapeHtml(p["元URL"])}" target="_blank" rel="noopener">${escapeHtml(p["タイトル"])}</a>
-        <span class="add-status-date">${escapeHtml(String(p["登録日時"] || "").slice(0, 16))}</span>
-      </div>`).join("");
+
+  renderManualStatusBlock("manualAddStatusNews", "news", newsItems.map(d => ({
+    pending: d.status === "判定待ち", url: d.url, title: d.title, at: d.registeredAt
+  })), "「判定待ち」の記事は、翌朝の自動収集のタイミングでAIが分野・重要度・国を判定します。");
+
+  renderManualStatusBlock("manualAddStatusPaper", "paper", paperItems.map(p => ({
+    pending: false, url: p["元URL"], title: p["タイトル"], at: p["登録日時"]
+  })), "");
+}
+
+function renderManualStatusBlock(elId, key, items, pendingNote) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  if (items.length === 0) {
+    el.style.display = "none";
+    return;
   }
+  const pendingCount = items.filter(i => i.pending).length;
+  const isOpen = manualStatusOpen[key];
+  const listHtml = items.map(i => `
+    <div class="manual-add-status-item">
+      <span class="add-status-badge ${i.pending ? "pending" : "done"}">${i.pending ? "⏳ 判定待ち" : "✅ 判定完了"}</span>
+      <a href="${escapeHtml(i.url)}" target="_blank" rel="noopener">${escapeHtml(i.title)}</a>
+      <span class="add-status-date">${escapeHtml(String(i.at || "").slice(0, 16))}</span>
+    </div>`).join("");
+
+  el.style.display = "block";
+  el.innerHTML = `
+    <div class="manual-add-status-summary" data-status-toggle="${key}">
+      最近の手動追加 ${items.length}件${pendingCount > 0 ? `(<span class="pending-count">⏳判定待ち ${pendingCount}件</span>)` : ""} ${isOpen ? "▲" : "▼"}
+    </div>
+    <div class="manual-add-status-list ${isOpen ? "open" : ""}">
+      ${listHtml}
+      ${pendingCount > 0 && pendingNote ? `<div class="edit-note">${pendingNote}</div>` : ""}
+    </div>`;
+  el.querySelector("[data-status-toggle]").addEventListener("click", () => {
+    manualStatusOpen[key] = !manualStatusOpen[key];
+    renderManualStatusBlock(elId, key, items, pendingNote);
+  });
 }
 
 function loadData() {
@@ -1926,7 +1952,7 @@ document.getElementById("addPaperSubmitBtn").addEventListener("click", () => {
       note.textContent = `登録しました:「${result.title}」。一覧を更新しています…`;
       refreshData((ok) => {
         note.textContent = ok
-          ? `登録しました:「${result.title}」。AIの判定は完了しています(下の「最近の手動追加」を参照)。`
+          ? `登録しました:「${result.title}」。AIの判定は完了しています(「最近の手動追加」で確認できます)。`
           : `登録しました:「${result.title}」。一覧の更新に失敗したため、画面を再読み込みしてください。`;
       });
       document.getElementById("formPaperUrl").value = "";
@@ -2538,7 +2564,7 @@ document.getElementById("addNewsSubmitBtn").addEventListener("click", () => {
       document.getElementById("formNote").textContent = "登録しました。一覧を更新しています…";
       refreshData((ok) => {
         document.getElementById("formNote").textContent = ok
-          ? "登録しました。下の「最近の手動追加」に、判定の状況(「判定待ち」は翌朝AIが判定します)が表示されます。"
+          ? "登録しました。「最近の手動追加」を開くと、判定の状況(「判定待ち」は翌朝AIが判定します)を確認できます。"
           : "登録しました。一覧の更新に失敗したため、画面を再読み込みしてください。";
       });
       document.getElementById("formUrl").value = "";
