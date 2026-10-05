@@ -407,6 +407,53 @@
     white-space: nowrap;
   }
   .flag-btn:hover { border-color: #C0392B; color: #C0392B; }
+  .flag-reason-form {
+    display: none;
+    flex-direction: column;
+    gap: 6px;
+    background: #FBF3F2;
+    border: 1px solid #EBC9C5;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+  }
+  .flag-reason-form textarea {
+    width: 100%;
+    padding: 7px 9px;
+    border: 1px solid var(--gray-line);
+    border-radius: 6px;
+    font-size: 12.5px;
+    font-family: inherit;
+    resize: vertical;
+  }
+  .flag-reason-actions { display: flex; gap: 8px; align-items: center; }
+  .flag-reason-actions button {
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--gray-line);
+    background: var(--white);
+    color: var(--gray-body);
+  }
+  .flag-reason-actions .flag-reason-submit {
+    background: #C0392B;
+    border-color: #C0392B;
+    color: #fff;
+  }
+  .flag-review-note {
+    font-size: 11.5px;
+    line-height: 1.6;
+    color: #55606B;
+    background: #F7F9FA;
+    border-radius: 6px;
+    padding: 6px 10px;
+    margin-bottom: 8px;
+  }
+  .flag-review-note .review-status { font-weight: 700; }
+  .flag-review-note .review-status.pending { color: #B9660B; }
+  .flag-review-note .review-status.done { color: #1D8348; }
   .flag-btn.active {
     border-color: #C0392B;
     background: #FAECE7;
@@ -583,6 +630,39 @@
     padding: 60px 20px;
   }
   .error-state { color: #B23A3A; }
+  .manual-add-status {
+    display: none;
+    background: var(--white);
+    border: 1px solid var(--gray-line);
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 10px;
+    font-size: 12.5px;
+  }
+  .manual-add-status-title { font-weight: 700; color: var(--navy); margin-bottom: 6px; font-size: 12px; }
+  .manual-add-status-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+    border-top: 1px solid #F0F2F4;
+  }
+  .manual-add-status-item:first-of-type { border-top: none; }
+  .manual-add-status-item a { color: var(--blue); text-decoration: none; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .manual-add-status-item a:hover { text-decoration: underline; }
+  .add-status-badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .add-status-badge.pending { background: #FDEEDC; color: #B9660B; }
+  .add-status-badge.done { background: #E3F4EA; color: #1D8348; }
+  .add-status-date { font-size: 11px; color: #9AA3AB; white-space: nowrap; }
+  .tab-guide {
+    font-size: 12px;
+    line-height: 1.7;
+    color: #55606B;
+    background: #F4F7FA;
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin-bottom: 10px;
+  }
   .error-hint {
     display: inline-block;
     margin-top: 8px;
@@ -705,6 +785,41 @@
   .digest-toggle-arrow {
     font-size: 9px;
   }
+  .analysis-period {
+    font-size: 11.5px;
+    color: #55606B;
+    background: #F4F7FA;
+    border-radius: 6px;
+    padding: 4px 10px;
+    display: inline-block;
+    margin-bottom: 8px;
+  }
+  .analysis-legend {
+    font-size: 11px;
+    color: #9AA3AB;
+    margin-top: 6px;
+  }
+  .stmt-inference {
+    background: #FFF6E5;
+    border-radius: 3px;
+    padding: 0 2px;
+  }
+  .stmt-inference-label {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: #B9660B;
+    margin-right: 2px;
+  }
+  .src-ref {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--blue);
+    text-decoration: none;
+    vertical-align: super;
+    margin: 0 1px;
+    cursor: pointer;
+  }
+  .src-ref:hover { text-decoration: underline; }
   .digest-article-list {
     list-style: none;
     margin: 8px 0 0;
@@ -866,6 +981,7 @@
     <input class="search-input" id="searchInput" type="text" placeholder="🔍 キーワードで検索(タイトル・要約)">
   </div>
   <div class="add-news-form" id="reportPanel" style="display:none;"></div>
+  <div class="tab-guide">📰 <b>ニュース記事</b>(報道・企業の発表・行政の動き・統計など)が入ります。<b>論文</b>(PubMed・Europe PMC・DOI)は「🔬 学術研究」タブに入ります。</div>
   <div style="display:flex; align-items:center; gap:16px; margin-bottom:10px; flex-wrap:wrap;">
     <span id="newOnlyToggle" class="new-only-toggle active">
       🆕 直近7日のみ表示
@@ -915,6 +1031,7 @@
       <button class="add-news-btn" id="addNewsBtn">+ 追加する</button>
     </div>
   </div>
+  <div class="manual-add-status" id="manualAddStatusNews"></div>
   <div class="add-news-form" id="addNewsForm" style="display:none;">
     <div class="form-row">
       <input type="text" id="formUrl" placeholder="ニュース記事のURLを貼り付け">
@@ -952,6 +1069,7 @@
 
 <div class="digest-container" id="digestContainer"></div>
 <div class="toolbar" id="academicToolbar" style="display:none;">
+  <div class="tab-guide">🔬 <b>論文</b>(PubMed・Europe PMC・DOIで公開されている査読論文・プレプリント)が入ります。<b>ニュース記事</b>は「📰 ニュース一覧」タブに入ります。</div>
   <div class="search-row">
     <input class="search-input" id="academicSearchInput" type="text" placeholder="🔍 キーワードで検索(タイトル・要約)">
   </div>
@@ -993,6 +1111,7 @@
       <button class="add-news-btn" id="addPaperBtn">+ 追加する</button>
     </div>
   </div>
+  <div class="manual-add-status" id="manualAddStatusPaper"></div>
   <div class="add-news-form" id="addPaperForm" style="display:none;">
     <div class="form-row">
       <input type="text" id="formPaperUrl" placeholder="論文のURL(PubMed / Europe PMC / DOI)を貼り付け">
@@ -1084,7 +1203,8 @@ let MEMOS = {};
 let REPORTS = []; // { "記事ID": [{author, content, date}, ...] }
 let FIELD_DIGEST_HISTORY = {}; // { "分野名": [{generatedAt, content, articleCount, articles}, ...] } 新しい順
 let digestSelectedIndex = {}; // { "分野名": 選択中のインデックス(0=最新) }
-let FIELD_MEMOS = {}; // { "分野名": [{date, author, content}, ...] }
+let FIELD_MEMOS = {};
+let FLAG_REVIEWS = {}; // { 記事ID: {recordedAt, reason, status, comment} } 「違和感」の記録と見直し結果 // { "分野名": [{date, author, content}, ...] }
 let PAPERS = []; // PubMedから収集した論文一覧
 let academicQuery = "";
 let academicActiveTheme = "すべて";
@@ -1093,6 +1213,100 @@ let academicActiveRegion = "すべて";
 let academicActiveMonth = "すべて";
 
 // GAS Web AppはCORSに対応していないため、<script>タグを使うJSONP方式でデータを取得する
+function applyServerData(json) {
+  DATA = (json.items || []).map(item => ({
+    id: item["ID"],
+    title: item["タイトル"],
+    field: item["分野"],
+    importance: IMPORTANCE_MAP[item["重要度"]] || "mid",
+    importanceLabel: item["重要度"] || "中",
+    summary: item["要約"],
+    source: item["ソース種別"],
+    poster: item["投稿者"],
+    date: item["公開日"],
+    registeredAt: item["登録日時"],
+    region: normalizeRegion(item["国"]),
+    departments: (item["部門"] || "").split(",").map(d => d.trim()).filter(Boolean),
+    reason: item["判定理由"] || "",
+    status: item["ステータス"] || "",
+    url: item["元URL"]
+  }));
+
+  // 新着順(記事の公開日が新しい順)に並び替え
+  DATA.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  MEMOS = json.memos || {};
+  REPORTS = json.reports || [];
+  FIELD_DIGEST_HISTORY = json.fieldDigestHistory || {};
+  FIELD_MEMOS = json.fieldMemos || {};
+  FLAG_REVIEWS = json.flagReviews || {};
+  PAPERS = json.papers || [];
+
+  updateRegionsFromData();
+  updateMonthsFromData();
+}
+
+// 画面を「読み込み中」に切り替えず、裏でデータだけ最新化する(手動追加の直後などに使う)
+function refreshData(onDone) {
+  const cb = "artKbRefresh_" + Date.now();
+  const script = document.createElement("script");
+  const timer = setTimeout(() => { delete window[cb]; script.remove(); if (onDone) onDone(false); }, 20000);
+  window[cb] = function (json) {
+    clearTimeout(timer);
+    delete window[cb];
+    script.remove();
+    applyServerData(json);
+    render();
+    renderAcademicTab();
+    renderManualAddStatus();
+    if (onDone) onDone(true);
+  };
+  script.src = API_URL + "?callback=" + cb;
+  script.onerror = () => { clearTimeout(timer); delete window[cb]; script.remove(); if (onDone) onDone(false); };
+  document.body.appendChild(script);
+}
+
+// 「最近の手動追加」: 追加した記事と、判定の状況(判定待ち/完了)を表示する
+function renderManualAddStatus() {
+  const newsEl = document.getElementById("manualAddStatusNews");
+  const paperEl = document.getElementById("manualAddStatusPaper");
+  if (!newsEl || !paperEl) return;
+
+  const manualNews = DATA
+    .filter(d => (d.source || "").indexOf("手動追加") === 0)
+    .sort((a, b) => new Date(b.registeredAt) - new Date(a.registeredAt))
+    .slice(0, 5);
+  if (manualNews.length === 0) {
+    newsEl.style.display = "none";
+  } else {
+    newsEl.style.display = "block";
+    newsEl.innerHTML = `<div class="manual-add-status-title">最近の手動追加(直近${manualNews.length}件)</div>` + manualNews.map(d => {
+      const pending = d.status === "判定待ち";
+      return `<div class="manual-add-status-item">
+        <span class="add-status-badge ${pending ? "pending" : "done"}">${pending ? "⏳ 判定待ち" : "✅ 判定完了"}</span>
+        <a href="${escapeHtml(d.url)}" target="_blank" rel="noopener">${escapeHtml(d.title)}</a>
+        <span class="add-status-date">${escapeHtml(String(d.registeredAt || "").slice(0, 16))}</span>
+      </div>`;
+    }).join("") + (manualNews.some(d => d.status === "判定待ち") ? `<div class="edit-note">「判定待ち」の記事は、翌朝の自動収集のタイミングでAIが分野・重要度・国を判定します。</div>` : "");
+  }
+
+  const manualPapers = (PAPERS || [])
+    .filter(p => p["テーマ"] === "手動追加")
+    .sort((a, b) => new Date(b["登録日時"]) - new Date(a["登録日時"]))
+    .slice(0, 5);
+  if (manualPapers.length === 0) {
+    paperEl.style.display = "none";
+  } else {
+    paperEl.style.display = "block";
+    paperEl.innerHTML = `<div class="manual-add-status-title">最近の手動追加(直近${manualPapers.length}件)</div>` + manualPapers.map(p => `
+      <div class="manual-add-status-item">
+        <span class="add-status-badge done">✅ 判定完了</span>
+        <a href="${escapeHtml(p["元URL"])}" target="_blank" rel="noopener">${escapeHtml(p["タイトル"])}</a>
+        <span class="add-status-date">${escapeHtml(String(p["登録日時"] || "").slice(0, 16))}</span>
+      </div>`).join("");
+  }
+}
+
 function loadData() {
   document.getElementById("loadingState").style.display = "block";
   document.getElementById("errorState").style.display = "none";
@@ -1116,38 +1330,11 @@ function loadData() {
     delete window[callbackName];
     script.remove();
 
-    DATA = (json.items || []).map(item => ({
-      id: item["ID"],
-      title: item["タイトル"],
-      field: item["分野"],
-      importance: IMPORTANCE_MAP[item["重要度"]] || "mid",
-      importanceLabel: item["重要度"] || "中",
-      summary: item["要約"],
-      source: item["ソース種別"],
-      poster: item["投稿者"],
-      date: item["公開日"],
-      registeredAt: item["登録日時"],
-      region: normalizeRegion(item["国"]),
-      departments: (item["部門"] || "").split(",").map(d => d.trim()).filter(Boolean),
-      reason: item["判定理由"] || "",
-      status: item["ステータス"] || "",
-      url: item["元URL"]
-    }));
-
-    // 新着順(記事の公開日が新しい順)に並び替え
-    DATA.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-    MEMOS = json.memos || {};
-    REPORTS = json.reports || [];
-    FIELD_DIGEST_HISTORY = json.fieldDigestHistory || {};
-    FIELD_MEMOS = json.fieldMemos || {};
-    PAPERS = json.papers || [];
-
-    updateRegionsFromData();
-    updateMonthsFromData();
+    applyServerData(json);
 
     document.getElementById("loadingState").style.display = "none";
     render();
+    renderManualAddStatus();
   };
 
   const script = document.createElement("script");
@@ -1380,6 +1567,15 @@ function render() {
         </button>
       </div>
       ${item.reason ? `<div class="reason-body" data-reason-body-id="${item.id}" style="display:none;">${escapeAttr(item.reason)}</div>` : ""}
+      <div class="flag-reason-form" data-flag-form-id="${item.id}">
+        <textarea rows="2" data-flag-reason-input="${item.id}" placeholder="どこに違和感がありますか?(任意)例: この内容なら重要度は「中」が妥当だと思う"></textarea>
+        <div class="flag-reason-actions">
+          <button class="flag-reason-submit" data-flag-submit="${item.id}">記録する</button>
+          <button data-flag-cancel="${item.id}">キャンセル</button>
+          <span class="edit-note" data-flag-note="${item.id}"></span>
+        </div>
+      </div>
+      ${flagReviewNoteHtml(item.id)}
       <div class="meta-row">
         <span class="source-badge">${item.source}${item.poster ? " ・ " + item.poster : ""}</span>
         <span style="font-size:11.5px;color:#9AA3AB;">${formatDisplayDate(item.date)}</span>
@@ -1392,6 +1588,14 @@ function render() {
 
   grid.querySelectorAll(".flag-btn").forEach(btn => {
     btn.addEventListener("click", () => onFlagClick(btn));
+  });
+  grid.querySelectorAll("[data-flag-submit]").forEach(btn => {
+    btn.addEventListener("click", () => onFlagSubmit(btn.dataset.flagSubmit));
+  });
+  grid.querySelectorAll("[data-flag-cancel]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      grid.querySelector(`.flag-reason-form[data-flag-form-id="${btn.dataset.flagCancel}"]`).style.display = "none";
+    });
   });
 
   grid.querySelectorAll(".reason-toggle").forEach(toggle => {
@@ -1589,32 +1793,68 @@ function onBookmarkClickAcademic(btn) {
   renderAcademicTab();
 }
 
+// 見直し状況の表示(違和感が記録されている記事のみ)
+function flagReviewNoteHtml(id) {
+  const rv = FLAG_REVIEWS[String(id)];
+  if (!rv) return "";
+  const reasonHtml = rv.reason ? `<div>理由: ${escapeAttr(rv.reason)}</div>` : "";
+  if (!rv.status) {
+    return `<div class="flag-review-note">${reasonHtml}<span class="review-status pending">見直し待ち</span>(2週間に1回のレビューで確認します)</div>`;
+  }
+  const commentHtml = rv.comment ? ` — ${escapeAttr(rv.comment)}` : "";
+  return `<div class="flag-review-note">${reasonHtml}<span class="review-status done">見直し済み: ${escapeAttr(rv.status)}</span>${commentHtml}</div>`;
+}
+
+function flagButtonData(id) {
+  const btn = document.querySelector(`.flag-btn[data-id="${id}"]`);
+  return btn ? { title: btn.dataset.title, field: btn.dataset.field, importance: btn.dataset.importance } : {};
+}
+
 function onFlagClick(btn) {
   const id = btn.dataset.id;
+  if (!flagState[id]) {
+    // 未記録: 理由(任意)の入力欄を開く
+    const form = document.querySelector(`.flag-reason-form[data-flag-form-id="${id}"]`);
+    form.style.display = form.style.display === "flex" ? "none" : "flex";
+    return;
+  }
+  // 記録済み: 取り消し
   btn.disabled = true;
   btn.textContent = "送信中…";
-
-  callApiJsonp({
-    action: "flagImportance",
-    id: id,
-    title: btn.dataset.title,
-    field: btn.dataset.field,
-    importance: btn.dataset.importance
-  }, (result) => {
+  callApiJsonp(Object.assign({ action: "flagImportance", mode: "remove", id: id }, flagButtonData(id)), (result) => {
     if (result.status === "ok") {
-      // サーバー側で記録された最終状態(記録/取り消し)を反映する
-      if (result.flagged) {
-        flagState[id] = true;
-      } else {
-        delete flagState[id];
-      }
+      delete flagState[id];
+      delete FLAG_REVIEWS[String(id)];
       localStorage.setItem("artKbFlags", JSON.stringify(flagState));
       render();
-      showToast(result.flagged ? "違和感を記録しました" : "違和感の記録を取り消しました");
+      showToast("違和感の記録を取り消しました");
     } else {
-      // 失敗時は状態を変えず、ボタンを元に戻す
       render();
-      showToast("記録に失敗しました: " + apiErrorMessage(result), true);
+      showToast(result.reason === "already_reviewed"
+        ? "見直し済みのため、取り消せません"
+        : "取り消しに失敗しました: " + apiErrorMessage(result), true);
+    }
+  });
+}
+
+function onFlagSubmit(id) {
+  const grid = document.getElementById("cardGrid");
+  const reason = grid.querySelector(`[data-flag-reason-input="${id}"]`).value.trim();
+  const note = grid.querySelector(`[data-flag-note="${id}"]`);
+  const submit = grid.querySelector(`[data-flag-submit="${id}"]`);
+  submit.disabled = true;
+  note.textContent = "送信中…";
+  callApiJsonp(Object.assign({ action: "flagImportance", mode: "add", id: id, reason: reason }, flagButtonData(id)), (result) => {
+    submit.disabled = false;
+    if (result.status === "ok") {
+      flagState[id] = true;
+      FLAG_REVIEWS[String(id)] = Object.assign({ status: "", comment: "" }, FLAG_REVIEWS[String(id)], { reason: reason });
+      localStorage.setItem("artKbFlags", JSON.stringify(flagState));
+      render();
+      showToast("違和感を記録しました");
+    } else {
+      // 失敗時は入力内容を残す
+      note.textContent = "記録に失敗しました: " + apiErrorMessage(result) + "(入力内容は残しています)";
     }
   });
 }
@@ -1683,12 +1923,17 @@ document.getElementById("addPaperSubmitBtn").addEventListener("click", () => {
     btn.disabled = false;
 
     if (result.status === "ok") {
-      note.textContent = `登録しました:「${result.title}」。画面を再読み込みすると反映されます。`;
+      note.textContent = `登録しました:「${result.title}」。一覧を更新しています…`;
+      refreshData((ok) => {
+        note.textContent = ok
+          ? `登録しました:「${result.title}」。AIの判定は完了しています(下の「最近の手動追加」を参照)。`
+          : `登録しました:「${result.title}」。一覧の更新に失敗したため、画面を再読み込みしてください。`;
+      });
       document.getElementById("formPaperUrl").value = "";
     } else if (result.status === "skipped" && result.reason === "duplicate") {
       note.textContent = "この論文はすでに登録済みです。";
     } else if (result.reason === "not_found") {
-      note.textContent = "論文情報を取得できませんでした。PubMed・Europe PMC・DOIのリンクか確認してください。";
+      note.textContent = "論文情報を取得できませんでした。PubMed・Europe PMC・DOIのリンクか確認してください。ニュース記事のURLの場合は「📰 ニュース一覧」タブから登録してください。";
     } else {
       note.textContent = "登録に失敗しました(" + (result.reason || "") + ")。しばらくしてから再度お試しください。";
     }
@@ -1867,6 +2112,74 @@ function fetchMonthSummary(scope, month, checkOnly, onResult) {
   document.body.appendChild(script);
 }
 
+// ---- AI分析の共通表示(対象期間・記述ごとの出典・事実/推測の区別) ----
+// result: { content, statements:[{text, kind, sources:[番号]}], articles:[{title,url}], periodStart, periodEnd, articleCount, generatedAt }
+// uid: 同じ画面内で出典リンクの移動先を区別するための識別子
+function renderAnalysisHtml(result, uid, bodyClass) {
+  const articles = result.articles || [];
+  const period = (result.periodStart && result.periodEnd)
+    ? `<div class="analysis-period">📅 対象期間: ${escapeHtml(result.periodStart)} 〜 ${escapeHtml(result.periodEnd)}</div>` : "";
+
+  const stmts = result.statements || [];
+  let bodyHtml;
+  let legend = "";
+  if (stmts.length > 0) {
+    bodyHtml = stmts.map(st => {
+      const refs = (st.sources || []).map(n => {
+        const a = articles[n - 1];
+        const tip = a ? escapeHtml(a.title) : "";
+        return `<a class="src-ref" data-src-uid="${escapeHtml(uid)}" data-src-no="${n}" title="${tip}">[${n}]</a>`;
+      }).join("");
+      const text = escapeHtml(st.text);
+      return st.kind === "inference"
+        ? `<span class="stmt-inference"><span class="stmt-inference-label">〔推測〕</span>${text}</span>${refs}`
+        : `${text}${refs}`;
+    }).join("");
+    legend = `<div class="analysis-legend">[ ]の番号は、下の「対象記事」の番号に対応します。〔推測〕は、記事に直接書かれていない解釈・見通しです。</div>`;
+  } else {
+    bodyHtml = escapeHtml(result.content);
+    legend = `<div class="analysis-legend">この分析は、出典・事実/推測の区別を付ける前に生成されたものです。</div>`;
+  }
+
+  const listHtml = articles.map((a, i) =>
+    `<li data-src-uid="${escapeHtml(uid)}" data-src-item="${i + 1}"><span style="color:#9AA3AB;">${i + 1}.</span> <a href="${escapeHtml(a.url)}" target="_blank" rel="noopener">${escapeHtml(a.title)}</a></li>`
+  ).join("");
+
+  return `${period}
+    <div class="${bodyClass}">${bodyHtml}</div>
+    ${legend}
+    <div class="digest-card-meta digest-card-meta-toggle" data-article-toggle="${escapeHtml(uid)}">対象記事: ${result.articleCount}件 ・ 生成日時: ${escapeHtml(result.generatedAt || "")} <span class="digest-toggle-arrow">▼</span></div>
+    <ul class="digest-article-list" data-article-list="${escapeHtml(uid)}" style="display:none;">${listHtml}</ul>`;
+}
+
+// 出典番号のクリックで、対象記事の一覧を開き、該当の記事を強調する/対象記事一覧の開閉
+function bindAnalysisEvents(root) {
+  root.querySelectorAll("[data-article-toggle]").forEach(el => {
+    el.addEventListener("click", () => {
+      const list = root.querySelector(`[data-article-list="${el.dataset.articleToggle}"]`);
+      const arrow = el.querySelector(".digest-toggle-arrow");
+      const isOpen = list.style.display !== "none";
+      list.style.display = isOpen ? "none" : "block";
+      if (arrow) arrow.textContent = isOpen ? "▼" : "▲";
+    });
+  });
+  root.querySelectorAll(".src-ref").forEach(ref => {
+    ref.addEventListener("click", () => {
+      const uid = ref.dataset.srcUid;
+      const list = root.querySelector(`[data-article-list="${uid}"]`);
+      list.style.display = "block";
+      const toggle = root.querySelector(`[data-article-toggle="${uid}"] .digest-toggle-arrow`);
+      if (toggle) toggle.textContent = "▲";
+      list.querySelectorAll("li").forEach(li => { li.style.background = ""; });
+      const target = list.querySelector(`li[data-src-item="${ref.dataset.srcNo}"]`);
+      if (target) {
+        target.style.background = "#FFF6E5";
+        target.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      }
+    });
+  });
+}
+
 function renderMonthSummaryBody(scope, month, panelId) {
   const body = document.getElementById(`${panelId}_body`);
   if (!body) return;
@@ -1876,10 +2189,8 @@ function renderMonthSummaryBody(scope, month, panelId) {
   // すでにこのセッション内で取得済みなら、通信せずそのまま表示
   if (monthSummaryClientCache[cacheKey]) {
     const r = monthSummaryClientCache[cacheKey];
-    body.innerHTML = `
-      <div class="month-summary-text">${escapeHtml(r.content)}</div>
-      <div class="month-summary-note">対象${r.articleCount}件 ・ 生成日時: ${escapeHtml(r.generatedAt)}</div>
-    `;
+    body.innerHTML = renderAnalysisHtml(r, "month_" + panelId, "month-summary-text");
+    bindAnalysisEvents(body);
     return;
   }
 
@@ -1888,10 +2199,8 @@ function renderMonthSummaryBody(scope, month, panelId) {
   fetchMonthSummary(scope, month, true, (result) => {
     if (result.status === "ok") {
       monthSummaryClientCache[cacheKey] = result;
-      body.innerHTML = `
-        <div class="month-summary-text">${escapeHtml(result.content)}</div>
-        <div class="month-summary-note">対象${result.articleCount}件 ・ 生成日時: ${escapeHtml(result.generatedAt)}</div>
-      `;
+      body.innerHTML = renderAnalysisHtml(result, "month_" + panelId, "month-summary-text");
+      bindAnalysisEvents(body);
       return;
     }
     // まだ生成されていない場合だけ、ボタンを表示する
@@ -1904,10 +2213,8 @@ function renderMonthSummaryBody(scope, month, panelId) {
       fetchMonthSummary(scope, month, false, (genResult) => {
         if (genResult.status === "ok") {
           monthSummaryClientCache[cacheKey] = genResult;
-          body.innerHTML = `
-            <div class="month-summary-text">${escapeHtml(genResult.content)}</div>
-            <div class="month-summary-note">対象${genResult.articleCount}件 ・ 生成日時: ${escapeHtml(genResult.generatedAt)}</div>
-          `;
+          body.innerHTML = renderAnalysisHtml(genResult, "month_" + panelId, "month-summary-text");
+          bindAnalysisEvents(body);
         } else if (genResult.reason === "timeout") {
           btn.disabled = false;
           btn.textContent = "🧠 AIで要約を生成";
@@ -2034,9 +2341,6 @@ function renderDigestTab() {
 
     const selectedIdx = Math.min(digestSelectedIndex[field] || 0, history.length - 1);
     const d = history[selectedIdx];
-    const articleListHtml = (d.articles || []).map(a => `
-      <li><a href="${escapeHtml(a.url)}" target="_blank" rel="noopener">${escapeHtml(a.title)}</a></li>
-    `).join("");
     const dateOptionsHtml = history.map((h, idx) =>
       `<option value="${idx}" ${idx === selectedIdx ? "selected" : ""}>${escapeHtml(h.generatedAt)}${idx === 0 ? "(最新)" : ""}</option>`
     ).join("");
@@ -2047,9 +2351,7 @@ function renderDigestTab() {
           <div class="digest-card-title">${field}</div>
           <select class="digest-date-select" data-field="${escapeHtml(field)}">${dateOptionsHtml}</select>
         </div>
-        <div class="digest-card-body">${escapeHtml(d.content)}</div>
-        <div class="digest-card-meta digest-card-meta-toggle" data-field="${escapeHtml(field)}">対象記事数: ${d.articleCount}件</div>
-        <ul class="digest-article-list" data-field-list="${escapeHtml(field)}" style="display:none;">${articleListHtml}</ul>
+        ${renderAnalysisHtml(d, "field_" + field + "_" + selectedIdx, "digest-card-body")}
         ${memoSectionHtml}
       </div>
     `;
@@ -2062,15 +2364,7 @@ function renderDigestTab() {
     });
   });
 
-  container.querySelectorAll(".digest-card-meta-toggle").forEach(el => {
-    el.addEventListener("click", () => {
-      const list = container.querySelector(`.digest-article-list[data-field-list="${el.dataset.field}"]`);
-      const arrow = el.querySelector(".digest-toggle-arrow");
-      const isOpen = list.style.display !== "none";
-      list.style.display = isOpen ? "none" : "block";
-      if (arrow) arrow.textContent = isOpen ? "▼" : "▲";
-    });
-  });
+  bindAnalysisEvents(container);
 
   container.querySelectorAll(".digest-memo-submit-btn").forEach(btn => {
     btn.addEventListener("click", () => onDigestMemoSubmit(btn));
@@ -2216,6 +2510,11 @@ document.getElementById("addNewsSubmitBtn").addEventListener("click", () => {
     document.getElementById("formNote").textContent = "URLを入力してください";
     return;
   }
+  // 論文のURLは「学術研究」タブで扱う(ニュース一覧に混ざらないようにする)
+  if (/pubmed\.ncbi\.nlm\.nih\.gov|europepmc\.org|doi\.org\//.test(url)) {
+    document.getElementById("formNote").textContent = "これは論文のURLのようです。論文は「🔬 学術研究」タブの「手動で論文を追加」から登録してください。";
+    return;
+  }
 
   const submitBtn = document.getElementById("addNewsSubmitBtn");
   submitBtn.disabled = true;
@@ -2236,7 +2535,12 @@ document.getElementById("addNewsSubmitBtn").addEventListener("click", () => {
     submitBtn.disabled = false;
 
     if (result.status === "ok") {
-      document.getElementById("formNote").textContent = "登録しました。「判定待ち」の状態で表示されます(翌朝AIが分野・重要度・国を判定します)。画面を再読み込みしてください。";
+      document.getElementById("formNote").textContent = "登録しました。一覧を更新しています…";
+      refreshData((ok) => {
+        document.getElementById("formNote").textContent = ok
+          ? "登録しました。下の「最近の手動追加」に、判定の状況(「判定待ち」は翌朝AIが判定します)が表示されます。"
+          : "登録しました。一覧の更新に失敗したため、画面を再読み込みしてください。";
+      });
       document.getElementById("formUrl").value = "";
       document.getElementById("formFallbackTitle").value = "";
       document.getElementById("formFallbackRow").style.display = "none";
