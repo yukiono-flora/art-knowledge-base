@@ -684,6 +684,15 @@
     color: #55606B;
     line-height: 1.7;
   }
+  .error-steps {
+    text-align: left;
+    display: inline-block;
+    margin: 10px 0 4px;
+    padding-left: 20px;
+    font-size: 12.5px;
+    line-height: 1.8;
+    color: #55606B;
+  }
   .toast {
     position: fixed;
     bottom: 24px;
@@ -1075,9 +1084,18 @@
 <div class="loading-state" id="loadingState">データを読み込んでいます...</div>
 <div class="error-state" id="errorState" style="display:none;">
   データの取得に失敗しました。<br>
-  <span class="error-hint">ARCS Inc.のGoogleアカウントにログインしていない場合、データを表示できません。<br>
-  ログインしてから、「再読み込み」を押してください。</span><br>
+  <span class="error-hint">ARCS Inc.のGoogleアカウントにログインしていない場合、データを表示できません。</span>
+  <ol class="error-steps">
+    <li>「ARCSアカウントでログイン」を押します(新しいタブが開きます)</li>
+    <li>ARCS Inc.のGoogleアカウントを選んでログインし、「ログインを確認できました」と表示されたら、そのタブを閉じます</li>
+    <li>このタブに戻ると、自動で再読み込みします(されない場合は「再読み込み」を押します)</li>
+  </ol>
+  <button class="retry-btn" id="loginBtn">ARCSアカウントでログイン</button>
   <button class="retry-btn" id="retryBtn">再読み込み</button>
+  <div class="error-hint" style="margin-top:12px;">
+    ※ 複数のGoogleアカウントにログインしている場合は、必ずARCS Inc.のアカウントを選んでください。<br>
+    「ページが見つかりません」と表示された場合は、別のアカウントで開かれています。画面右上のアカウントアイコンからARCSのアカウントに切り替えるか、シークレットウィンドウでナレッジベースを開き直してください。
+  </div>
 </div>
 <div class="toast" id="toast"></div>
 
@@ -1400,6 +1418,25 @@ function handleLoadError(err) {
 }
 
 document.getElementById("retryBtn").addEventListener("click", loadData);
+
+// ログイン: アカウント選択画面を経由して、ARCSのアカウントで確認ページを開く
+// (複数アカウントでログイン中でも、ARCS以外のアカウントで開かれてしまうのを避けるため)
+let loginTabOpened = false;
+document.getElementById("loginBtn").addEventListener("click", () => {
+  loginTabOpened = true;
+  const target = API_URL + "?action=ping";
+  window.open("https://accounts.google.com/AccountChooser?hd=arcs-inc.jp&continue=" + encodeURIComponent(target), "_blank");
+});
+
+// ログイン用のタブから戻ってきたとき、エラー表示が出たままなら自動で再読み込みする
+let lastAutoRetryAt = 0;
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible" || !loginTabOpened) return;
+  if (document.getElementById("errorState").style.display !== "block") return;
+  if (Date.now() - lastAutoRetryAt < 5000) return;
+  lastAutoRetryAt = Date.now();
+  loadData();
+});
 
 // ---- 共通: メッセージ表示(保存の成功/失敗などを画面に出す) ----
 let toastTimer = null;
