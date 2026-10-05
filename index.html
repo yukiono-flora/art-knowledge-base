@@ -1172,6 +1172,16 @@ function normalizeRegion(region) {
 }
 
 // ISO形式の日付文字列を "2026-08-19" のような表示用に整形する
+// 日付を日本時間の「yyyy-MM-dd」に整形する(ISO形式のUTC文字列でも、通常の日時文字列でも対応)
+function formatDateJst(value) {
+  if (!value) return "";
+  const d = new Date(value);
+  if (isNaN(d)) return String(value);
+  return new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit"
+  }).format(d); // 例: 2026-08-29
+}
+
 function formatDisplayDate(dateStr) {
   if (!dateStr) return "";
   const d = new Date(dateStr);
@@ -1315,7 +1325,7 @@ function renderManualStatusBlock(elId, key, items, pendingNote) {
     <div class="manual-add-status-item">
       <span class="add-status-badge ${i.pending ? "pending" : "done"}">${i.pending ? "⏳ 判定待ち" : "✅ 判定完了"}</span>
       <a href="${escapeHtml(i.url)}" target="_blank" rel="noopener">${escapeHtml(i.title)}</a>
-      <span class="add-status-date">${escapeHtml(String(i.at || "").slice(0, 16))}</span>
+      <span class="add-status-date">${escapeHtml(formatDateJst(i.at))}</span>
     </div>`).join("");
 
   el.style.display = "block";
