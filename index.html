@@ -454,6 +454,10 @@
   .flag-review-note .review-status { font-weight: 700; }
   .flag-review-note .review-status.pending { color: #B9660B; }
   .flag-review-note .review-status.done { color: #1D8348; }
+  .flag-review-note .review-status.progress { color: #1F6FB2; }
+  .flag-type-row { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; font-size: 12px; color: #55606B; }
+  .flag-type-label { width: 100%; font-weight: 600; }
+  .flag-type-row label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
   .flag-btn.active {
     border-color: #C0392B;
     background: #FAECE7;
@@ -614,12 +618,13 @@
   }
 
   .empty-state {
-    max-width: 1120px;
-    margin: 40px auto;
-    text-align: center;
-    color: #9AA3AB;
+    margin: 10px 2px 4px;
+    color: #55606B;
     font-size: 14px;
-    padding: 60px 20px;
+    padding: 14px 16px;
+    background: #FFF9EE;
+    border: 1px solid #F0DDB8;
+    border-radius: 10px;
   }
   .loading-state, .error-state {
     max-width: 1120px;
@@ -630,6 +635,17 @@
     padding: 60px 20px;
   }
   .error-state { color: #B23A3A; }
+  .related-box {
+    font-size: 11.5px;
+    line-height: 1.7;
+    color: #55606B;
+    background: #F4F7FA;
+    border-radius: 6px;
+    padding: 6px 10px;
+    margin-bottom: 8px;
+  }
+  .related-box .related-link { color: var(--blue); text-decoration: none; }
+  .related-box .related-link:hover { text-decoration: underline; }
   .manual-add-status {
     display: none;
     margin-bottom: 8px;
@@ -667,6 +683,10 @@
   .add-status-badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
   .add-status-badge.pending { background: #FDEEDC; color: #B9660B; }
   .add-status-badge.done { background: #E3F4EA; color: #1D8348; }
+  .add-status-badge.failed { background: #FBE4E1; color: #B23A3A; }
+  .add-status-badge.mine { background: #E4EFF9; color: #1F4F7A; font-weight: 600; }
+  .manual-add-status-summary .attention-count { color: #B23A3A; font-weight: 700; }
+  .status-show-btn { background: none; border: none; color: var(--blue); font-size: 11.5px; cursor: pointer; text-decoration: underline; padding: 0 2px; white-space: nowrap; }
   .add-status-date { font-size: 11px; color: #9AA3AB; white-space: nowrap; }
   .tab-guide {
     font-size: 12px;
@@ -683,6 +703,118 @@
     margin: 14px auto 0;
     text-align: left;
   }
+
+  /* ===== 絞り込み行(クラス化) ===== */
+  .filter-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+  .filter-label { font-size: 12px; color: #8A95A0; flex-shrink: 0; }
+  .filters-toggle { display: none; }
+  .tab-short { display: none; }
+
+  /* ===== 小画面対応(スマートフォン等) =====
+     対応画面幅: 360px以上。確認の基準幅は 390px / 768px / 1280px。
+     合格基準: ①ページ全体が横にスクロールしない ②文字・ボタンが欠けない・不自然に折り返さない ③全タブの入力・投稿・検索が完了できる */
+  @media (max-width: 640px) {
+    .header { padding: 14px 14px; }
+    .header-left { flex-wrap: wrap; gap: 2px 10px; }
+    .header-title { white-space: nowrap; font-size: 18px; }
+    .header-sub { font-size: 11px; white-space: nowrap; }
+
+    .main-tabs { padding: 0 8px; gap: 0; }
+    .main-tab { padding: 12px 10px; font-size: 13px; white-space: nowrap; flex: 1; text-align: center; }
+    .tab-long { display: none; }
+    .tab-short { display: inline; }
+
+    .toolbar { padding: 14px 14px 0; }
+    .grid { padding: 0 14px 40px; grid-template-columns: minmax(0, 1fr); }
+    .digest-container { padding: 14px; }
+
+    .search-row { margin-bottom: 10px; }
+    .search-input { font-size: 16px; padding: 10px 12px; min-width: 0; } /* 16px未満だとスマホで入力時に画面が拡大されてしまう */
+
+    /* 絞り込みは折りたたむ(初期は閉じる) */
+    .filters-toggle {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 10px 12px;
+      margin: 0 0 8px;
+      border: 1px solid var(--gray-line);
+      border-radius: 8px;
+      background: var(--white);
+      color: var(--navy);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .filters-body { display: none; }
+    .filters-body.open { display: block; }
+    .filter-row { align-items: flex-start; }
+
+    .count-line-row { flex-wrap: wrap; gap: 6px 14px; }
+    .count-line-row > div { flex-wrap: wrap; gap: 6px 14px !important; }
+
+    .add-news-callout { width: auto; flex-wrap: wrap; }
+    .add-news-callout-left { min-width: 0; }
+    .form-row { flex-wrap: wrap; }
+    .form-row input, .form-row select { min-width: 0; flex: 1 1 100%; }
+    .add-news-submit-btn { width: 100%; }
+
+    /* メモ・コメント入力は縦並びにして、投稿ボタンが画面外に出ないようにする */
+    .digest-memo-input-row { flex-wrap: wrap; }
+    .digest-memo-name-input { width: 100%; font-size: 16px; }
+    .digest-memo-input { flex: 1 1 100%; min-width: 0; font-size: 16px; }
+    .digest-memo-submit-btn { width: 100%; padding: 10px 16px; }
+    .digest-card-title-row { gap: 8px; }
+    .digest-date-select { max-width: 100%; }
+
+    .flag-reason-actions { flex-wrap: wrap; }
+    .manual-add-status-item { flex-wrap: wrap; }
+    .manual-add-status-item a { flex: 1 1 100%; white-space: normal; }
+    .edit-form, .edit-form .form-row { min-width: 0; }
+    .toast { max-width: calc(100vw - 28px); text-align: center; }
+  }
+
+  .active-filters {
+    display: none;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin: 10px 2px 0;
+    font-size: 12px;
+  }
+  .active-filters-label { color: #8A95A0; margin-right: 2px; }
+  .active-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #E4EFF9;
+    color: #1F4F7A;
+    border-radius: 999px;
+    padding: 3px 4px 3px 10px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    font-size: 12px;
+  }
+  .active-chip .x { font-size: 11px; background: rgba(31,79,122,0.15); border-radius: 50%; width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center; }
+  .active-chip:hover { background: #D3E4F4; }
+  .clear-all-btn {
+    background: none; border: none; color: var(--blue); font-size: 12px; font-weight: 600;
+    cursor: pointer; text-decoration: underline; padding: 3px 4px;
+  }
+  .since-visit-info { font-size: 11.5px; color: #55606B; }
+  .since-visit-info button {
+    background: none; border: none; color: var(--blue); font-size: 11.5px; font-weight: 600;
+    cursor: pointer; text-decoration: underline; padding: 0 2px;
+  }
+  .empty-box { line-height: 1.8; }
+  .empty-box .empty-title { font-size: 14px; font-weight: 700; color: var(--navy); margin-bottom: 6px; }
+  .empty-box .empty-actions { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .empty-box .empty-actions button {
+    padding: 8px 14px; border-radius: 7px; font-size: 12.5px; font-weight: 600; cursor: pointer;
+    border: 1px solid var(--blue); background: var(--white); color: var(--blue);
+  }
+  .empty-box .empty-actions button.primary { background: var(--blue); color: #fff; }
   .error-hint {
     margin: 0;
     font-size: 12.5px;
@@ -825,6 +957,15 @@
     border-radius: 6px;
     padding: 4px 10px;
     display: inline-block;
+    margin-bottom: 8px;
+  }
+  .analysis-warning {
+    font-size: 12px;
+    color: #8A4B00;
+    background: #FFF3DC;
+    border: 1px solid #F0D9A8;
+    border-radius: 6px;
+    padding: 6px 10px;
     margin-bottom: 8px;
   }
   .analysis-legend {
@@ -1004,9 +1145,9 @@
 </div>
 
 <div class="main-tabs">
-  <span class="main-tab active" id="tabNews">📰 ニュース一覧</span>
-  <span class="main-tab" id="tabDigest">🧠 AIによる業界動向分析</span>
-  <span class="main-tab" id="tabAcademic">🔬 学術研究</span>
+  <span class="main-tab active" id="tabNews">📰 <span class="tab-long">ニュース一覧</span><span class="tab-short">ニュース</span></span>
+  <span class="main-tab" id="tabDigest">🧠 <span class="tab-long">AIによる業界動向分析</span><span class="tab-short">AI分析</span></span>
+  <span class="main-tab" id="tabAcademic">🔬 <span class="tab-long">学術研究</span><span class="tab-short">論文</span></span>
 </div>
 
 <div class="toolbar" id="newsToolbar">
@@ -1021,29 +1162,35 @@
       <span class="new-only-switch"><span class="new-only-switch-knob"></span></span>
     </span>
     <span style="font-size:11.5px; color:#9AA3AB;">(公開から7日以内の記事のみ表示中。解除するとすべて表示されます)</span>
+    <span class="since-visit-info" id="sinceVisitInfo"></span>
     <span id="bookmarkOnlyToggle" class="new-only-toggle">
       🔖 ブックマークのみ表示
       <span class="new-only-switch"><span class="new-only-switch-knob"></span></span>
     </span>
   </div>
+  <button class="filters-toggle" id="filtersToggle" type="button">🔎 絞り込み(分野・部門・重要度・国・月) <span id="filtersToggleArrow">▼</span></button>
+  <div class="filters-body" id="filtersBody">
   <div class="chip-row" id="fieldChips"></div>
-  <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
-    <span style="font-size:12px; color:#8A95A0; flex-shrink:0;">部門:</span>
+  <div class="filter-row">
+    <span class="filter-label">部門:</span>
     <div class="chip-row" id="departmentChips" style="margin-bottom:0;"></div>
   </div>
-  <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
-    <span style="font-size:12px; color:#8A95A0; flex-shrink:0;">重要度:</span>
+  <div class="filter-row">
+    <span class="filter-label">重要度:</span>
     <div class="chip-row" id="importanceChips" style="margin-bottom:0;"></div>
   </div>
-  <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
-    <span style="font-size:12px; color:#8A95A0; flex-shrink:0;">国:</span>
+  <div class="filter-row">
+    <span class="filter-label">国:</span>
     <div class="chip-row" id="regionChips" style="margin-bottom:0;"></div>
   </div>
-  <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
-    <span style="font-size:12px; color:#8A95A0; flex-shrink:0;">月:</span>
+  <div class="filter-row">
+    <span class="filter-label">月:</span>
     <div class="chip-row" id="monthChips" style="margin-bottom:0;"></div>
   </div>
+  </div>
   <div class="month-summary-panel" id="monthSummaryPanel" style="display:none;"></div>
+  <div class="active-filters" id="activeFilters"></div>
+  <div class="empty-state" id="emptyState" style="display:none;"></div>
   <div class="count-line-row">
     <span class="count-line" id="countLine"></span>
     <div style="display:flex; gap:16px;">
@@ -1090,17 +1237,18 @@
 </div>
 
 <div class="grid" id="cardGrid"></div>
-<div class="empty-state" id="emptyState" style="display:none;">該当する記事がありません。検索条件を変えてみてください。</div>
 <div class="loading-state" id="loadingState">データを読み込んでいます...</div>
 <div class="error-state" id="errorState" style="display:none;">
-  <div class="error-title">データの取得に失敗しました。</div>
+  <div class="error-title" id="errorTitle">データの取得に失敗しました。</div>
   <div class="error-box">
-    <p class="error-hint">ARCS Inc.のGoogleアカウントにログインしていない場合、データを表示できません。次の手順でログインしてください。</p>
+    <p class="error-hint" id="errorHint">ARCS Inc.のGoogleアカウントにログインしていない場合、データを表示できません。次の手順でログインしてください。</p>
+    <div id="errorLoginBlock">
     <ol class="error-steps">
       <li>「ARCSアカウントでログイン」を押します(新しいタブが開きます)</li>
       <li>ARCS Inc.のGoogleアカウントを選んでログインし、「ログインを確認できました」と表示されたら、そのタブを閉じます</li>
       <li>このタブに戻ると、自動で再読み込みします(されない場合は「再読み込み」を押します)</li>
     </ol>
+    </div>
     <div class="error-actions">
       <button class="retry-btn" id="loginBtn">ARCSアカウントでログイン</button>
       <button class="retry-btn" id="retryBtn">再読み込み</button>
@@ -1125,20 +1273,20 @@
       <span class="new-only-switch"><span class="new-only-switch-knob"></span></span>
     </span>
   </div>
-  <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
-    <span style="font-size:12px; color:#8A95A0; flex-shrink:0;">テーマ:</span>
+  <div class="filter-row">
+    <span class="filter-label">テーマ:</span>
     <div class="chip-row" id="academicThemeChips" style="margin-bottom:0;"></div>
   </div>
-  <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
-    <span style="font-size:12px; color:#8A95A0; flex-shrink:0;">重要度:</span>
+  <div class="filter-row">
+    <span class="filter-label">重要度:</span>
     <div class="chip-row" id="academicImportanceChips" style="margin-bottom:0;"></div>
   </div>
-  <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
-    <span style="font-size:12px; color:#8A95A0; flex-shrink:0;">国:</span>
+  <div class="filter-row">
+    <span class="filter-label">国:</span>
     <div class="chip-row" id="academicRegionChips" style="margin-bottom:0;"></div>
   </div>
-  <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
-    <span style="font-size:12px; color:#8A95A0; flex-shrink:0;">月:</span>
+  <div class="filter-row">
+    <span class="filter-label">月:</span>
     <div class="chip-row" id="academicMonthChips" style="margin-bottom:0;"></div>
   </div>
   <div class="month-summary-panel" id="academicMonthSummaryPanel" style="display:none;"></div>
@@ -1187,8 +1335,19 @@ let activeDepartment = "すべて";
 let activeImportance = "すべて";
 let activeRegion = "すべて";
 let activeMonth = "すべて";
-let showNewOnly = true; // 初期表示は新着のみに絞る
+let showNewOnly = true; // 初期表示は直近7日に絞る
+let sinceLastVisitOnly = false; // 「前回訪問以降に追加された記事」に絞る(直近7日の絞り込みとは同時に使わない)
 let query = "";
+
+// 前回の訪問時刻(このブラウザに保存)。今回の訪問時刻はページを開いた時点で記録し、「前回」はこの画面の間は固定する
+const PREV_VISIT_AT = (() => {
+  let prev = null;
+  try {
+    prev = localStorage.getItem("artKbLastVisit");
+    localStorage.setItem("artKbLastVisit", new Date().toISOString());
+  } catch (e) { /* 保存できない環境では、前回訪問の機能のみ無効になる */ }
+  return prev;
+})();
 
 function updateRegionsFromData() {
   const uniqueRegions = [...new Set(DATA.map(item => item.region).filter(Boolean))];
@@ -1197,6 +1356,71 @@ function updateRegionsFromData() {
 }
 
 // 複数国が含まれる場合(例:"デンマーク, アメリカ")は「グローバル」として扱う
+// ---- ニュースと論文の相互参照(同じ研究に関する候補) ----
+// ニュースの要約も論文の要約も日本語なので、文字2つ組の重なりで「同じ研究かもしれない」組を探す。
+// 一致度は、短い方の文字2つ組が、もう一方にどれだけ含まれているか。誤った結びつけを避けるため、しきい値は高めに設定している。
+// (これは候補の提示であり、同一研究であることの保証ではない。実データで見逃し・誤りが多い場合は、この値を調整する)
+const RELATED_THRESHOLD = 0.35;
+const RELATED_MAX = 2;
+
+function relatedBigrams(text) {
+  const n = String(text || "").normalize("NFKC").toLowerCase().replace(/[\s\u3000、。,.・「」『』()\-—–:;!?]/g, "");
+  const set = new Set();
+  for (let i = 0; i < n.length - 1; i++) set.add(n.slice(i, i + 2));
+  return set;
+}
+function relatedScore(a, b) {
+  if (a.size === 0 || b.size === 0) return 0;
+  let inter = 0;
+  a.forEach(g => { if (b.has(g)) inter++; });
+  return inter / Math.min(a.size, b.size);
+}
+let relatedIndexCache = null;
+function buildRelatedIndex() {
+  if (relatedIndexCache && relatedIndexCache.dataLen === DATA.length && relatedIndexCache.papersLen === PAPERS.length) return relatedIndexCache;
+  const newsGrams = new Map(DATA.map(d => [String(d.id), relatedBigrams(d.title + " " + d.summary)]));
+  const paperGrams = new Map(PAPERS.map(p => [String(p["PMID"]), relatedBigrams(p["タイトル"] + " " + p["要約"])]));
+  relatedIndexCache = { dataLen: DATA.length, papersLen: PAPERS.length, newsGrams, paperGrams };
+  return relatedIndexCache;
+}
+// ニュース記事に対する、関連する論文の候補
+function relatedPapersFor(item) {
+  const idx = buildRelatedIndex();
+  const g = idx.newsGrams.get(String(item.id));
+  if (!g) return [];
+  return PAPERS.map(p => ({ p, score: relatedScore(g, idx.paperGrams.get(String(p["PMID"]))) }))
+    .filter(x => x.score >= RELATED_THRESHOLD).sort((a, b) => b.score - a.score).slice(0, RELATED_MAX).map(x => x.p);
+}
+// 論文に対する、関連するニュース記事の候補
+function relatedNewsFor(paper) {
+  const idx = buildRelatedIndex();
+  const g = idx.paperGrams.get(String(paper["PMID"]));
+  if (!g) return [];
+  return DATA.map(d => ({ d, score: relatedScore(g, idx.newsGrams.get(String(d.id))) }))
+    .filter(x => x.score >= RELATED_THRESHOLD).sort((a, b) => b.score - a.score).slice(0, RELATED_MAX).map(x => x.d);
+}
+function relatedHtmlForNews(item) {
+  const list = relatedPapersFor(item);
+  if (list.length === 0) return "";
+  return `<div class="related-box">🔬 関連する論文の候補: ` + list.map(p =>
+    `<a href="#" class="related-link" data-related-kind="paper" data-related-key="${escapeHtml(p["タイトル"])}">${escapeHtml(p["タイトル"])}</a>`).join(" / ") + `</div>`;
+}
+function relatedHtmlForPaper(paper) {
+  const list = relatedNewsFor(paper);
+  if (list.length === 0) return "";
+  return `<div class="related-box">📰 関連するニュースの候補: ` + list.map(d =>
+    `<a href="#" class="related-link" data-related-kind="news" data-related-key="${escapeHtml(d.title)}">${escapeHtml(d.title)}</a>`).join(" / ") + `</div>`;
+}
+// 関連候補のリンクを押すと、もう一方のタブへ移り、該当の記事・論文を検索した状態にする
+function bindRelatedLinks(root) {
+  root.querySelectorAll(".related-link").forEach(a => {
+    a.addEventListener("click", (e) => {
+      e.preventDefault();
+      showAddedInList(a.dataset.relatedKind, a.dataset.relatedKey);
+    });
+  });
+}
+
 function normalizeRegion(region) {
   if (!region) return "";
   const hasMultiple = /[,、]/.test(region) || /[・&]/.test(region);
@@ -1322,63 +1546,99 @@ function refreshData(onDone) {
   document.body.appendChild(script);
 }
 
-// 「手動追加(直近7日)」: 1行に折りたたみ、クリックで開くと、追加した記事と判定の状況(判定待ち/完了)を表示する
+// 「手動追加(直近7日)」: 1行に折りたたみ、クリックで開くと、追加した記事と処理状況を表示する
+// 状態: ⏳判定待ち(受付済み) / ⚠要確認(判定待ちが2日以上) / ✅完了 / ❌失敗(登録できなかった)
 const manualStatusOpen = { news: false, paper: false };
 
 function renderManualAddStatus() {
-  // 「直近」の定義: 登録から7日以内(初期表示の「直近7日」と揃える)。
-  // ただし、判定待ちの記事は、7日を過ぎても表示し続ける(判定が終わっていないものを見落とさないため)
   const WITHIN_MS = 7 * 24 * 3600 * 1000;
-  const isWithinWeek = (v) => {
-    const t = new Date(v).getTime();
-    return !isNaN(t) && (Date.now() - t) <= WITHIN_MS;
-  };
+  const isWithinWeek = (v) => { const t = new Date(v).getTime(); return !isNaN(t) && (Date.now() - t) <= WITHIN_MS; };
+  const hoursSince = (v) => { const t = new Date(v).getTime(); return isNaN(t) ? 0 : (Date.now() - t) / 3600000; };
+
+  // 「直近」の定義: 登録から7日以内。ただし、判定待ちの記事は、7日を過ぎても表示し続ける(見落とし防止)
   const newsItems = DATA
     .filter(d => (d.source || "").indexOf("手動追加") === 0)
     .filter(d => d.status === "判定待ち" || isWithinWeek(d.registeredAt))
-    .sort((a, b) => new Date(b.registeredAt) - new Date(a.registeredAt));
+    .sort((a, b) => new Date(b.registeredAt) - new Date(a.registeredAt))
+    .map(d => {
+      const pending = d.status === "判定待ち";
+      const stale = pending && hoursSince(d.registeredAt) >= 48;
+      return {
+        state: stale ? "stale" : (pending ? "pending" : "done"),
+        url: d.url, title: d.title, at: d.registeredAt, mine: isMyAdd("news", d.url), kind: "news"
+      };
+    });
   const paperItems = (PAPERS || [])
     .filter(p => p["テーマ"] === "手動追加")
     .filter(p => isWithinWeek(p["登録日時"]))
-    .sort((a, b) => new Date(b["登録日時"]) - new Date(a["登録日時"]));
+    .sort((a, b) => new Date(b["登録日時"]) - new Date(a["登録日時"]))
+    .map(p => ({ state: "done", url: p["元URL"], title: p["タイトル"], at: p["登録日時"], mine: isMyAdd("paper", p["元URL"]), kind: "paper" }));
 
-  renderManualStatusBlock("manualAddStatusNews", "news", newsItems.map(d => ({
-    pending: d.status === "判定待ち", url: d.url, title: d.title, at: d.registeredAt
-  })), "「判定待ち」の記事は、翌朝の自動収集のタイミングでAIが分野・重要度・国を判定します。");
+  // 登録に失敗したもの(この画面で試みて失敗したもの)を先頭に出す
+  const failedNews = failedAdds.filter(f => f.kind === "news").map(f => ({ state: "failed", url: f.url, title: f.url, at: f.at, mine: true, kind: "news", reason: f.reason }));
+  const failedPapers = failedAdds.filter(f => f.kind === "paper").map(f => ({ state: "failed", url: f.url, title: f.url, at: f.at, mine: true, kind: "paper", reason: f.reason }));
 
-  renderManualStatusBlock("manualAddStatusPaper", "paper", paperItems.map(p => ({
-    pending: false, url: p["元URL"], title: p["タイトル"], at: p["登録日時"]
-  })), "");
+  renderManualStatusBlock("manualAddStatusNews", "news", failedNews.concat(newsItems),
+    "「判定待ち」の記事は、翌朝の自動収集のタイミングでAIが分野・重要度・国を判定します。「要確認」は、判定が2日以上完了していません(管理者へ連絡してください)。");
+  renderManualStatusBlock("manualAddStatusPaper", "paper", failedPapers.concat(paperItems), "");
 }
 
-function renderManualStatusBlock(elId, key, items, pendingNote) {
+const STATE_BADGE = {
+  pending: { cls: "pending", label: "⏳ 判定待ち" },
+  stale:   { cls: "failed",  label: "⚠ 要確認" },
+  done:    { cls: "done",    label: "✅ 完了" },
+  failed:  { cls: "failed",  label: "❌ 登録失敗" }
+};
+
+function renderManualStatusBlock(elId, key, items, note) {
   const el = document.getElementById(elId);
   if (!el) return;
   if (items.length === 0) {
     el.style.display = "none";
     return;
   }
-  const pendingCount = items.filter(i => i.pending).length;
+  const pendingCount = items.filter(i => i.state === "pending").length;
+  const staleCount = items.filter(i => i.state === "stale").length;
+  const failedCount = items.filter(i => i.state === "failed").length;
   const isOpen = manualStatusOpen[key];
-  const listHtml = items.map(i => `
-    <div class="manual-add-status-item">
-      <span class="add-status-badge ${i.pending ? "pending" : "done"}">${i.pending ? "⏳ 判定待ち" : "✅ 判定完了"}</span>
+
+  const listHtml = items.map((i, idx) => {
+    const b = STATE_BADGE[i.state];
+    const detail = i.state === "failed" ? `<div class="edit-note error" style="flex:1 1 100%;">${escapeHtml(i.reason || "")}(入力欄に同じURLを入れて、もう一度登録してください)</div>` : "";
+    return `<div class="manual-add-status-item">
+      <span class="add-status-badge ${b.cls}">${b.label}</span>
+      ${i.mine ? `<span class="add-status-badge mine">あなたが追加</span>` : ""}
       <a href="${escapeHtml(i.url)}" target="_blank" rel="noopener">${escapeHtml(i.title)}</a>
+      ${i.state !== "failed" ? `<button class="status-show-btn" data-status-show="${idx}" title="一覧で表示">一覧で表示</button>` : ""}
       <span class="add-status-date">${escapeHtml(formatDateJst(i.at))}</span>
-    </div>`).join("");
+      ${detail}
+    </div>`;
+  }).join("");
+
+  const summaryParts = [];
+  if (pendingCount > 0) summaryParts.push(`<span class="pending-count">⏳判定待ち ${pendingCount}件</span>`);
+  if (staleCount > 0) summaryParts.push(`<span class="attention-count">⚠要確認 ${staleCount}件</span>`);
+  if (failedCount > 0) summaryParts.push(`<span class="attention-count">❌登録失敗 ${failedCount}件</span>`);
 
   el.style.display = "block";
   el.innerHTML = `
     <div class="manual-add-status-summary" data-status-toggle="${key}">
-      手動追加(直近7日) ${items.length}件${pendingCount > 0 ? `(<span class="pending-count">⏳判定待ち ${pendingCount}件</span>)` : ""} ${isOpen ? "▲" : "▼"}
+      手動追加(直近7日) ${items.length}件${summaryParts.length ? "(" + summaryParts.join("・") + ")" : ""} ${isOpen ? "▲" : "▼"}
     </div>
     <div class="manual-add-status-list ${isOpen ? "open" : ""}">
       ${listHtml}
-      ${pendingCount > 0 && pendingNote ? `<div class="edit-note">${pendingNote}</div>` : ""}
+      ${(pendingCount > 0 || staleCount > 0) && note ? `<div class="edit-note">${note}</div>` : ""}
     </div>`;
+
   el.querySelector("[data-status-toggle]").addEventListener("click", () => {
     manualStatusOpen[key] = !manualStatusOpen[key];
-    renderManualStatusBlock(elId, key, items, pendingNote);
+    renderManualStatusBlock(elId, key, items, note);
+  });
+  el.querySelectorAll("[data-status-show]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const it = items[parseInt(btn.dataset.statusShow, 10)];
+      showAddedInList(it.kind, it.title);
+    });
   });
 }
 
@@ -1425,13 +1685,39 @@ function loadData() {
   document.body.appendChild(script);
 }
 
+// 失敗の原因を、ブラウザから分かる範囲で区別する
+//   ・通信障害: ブラウザがオフライン
+//   ・応答なし: 一定時間たっても応答がない(通信が遅い/サーバーが混雑)
+//   ・読み込み失敗: 応答を受け取れなかった(ログインが切れている/権限がない/サーバー側の問題のいずれか。ブラウザからは区別できない)
+function classifyLoadError(err) {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    return { title: "インターネットに接続できません。", hint: "ネットワーク接続を確認してから、「再読み込み」を押してください。", showLogin: false };
+  }
+  if (err && /タイムアウト/.test(err.message || "")) {
+    return { title: "データの取得に時間がかかっています。", hint: "通信が遅いか、サーバーが混み合っている可能性があります。しばらくしてから「再読み込み」を押してください。それでも表示されない場合は、ログインが切れている可能性があります。", showLogin: true };
+  }
+  return { title: "データの取得に失敗しました。", hint: "ARCS Inc.のGoogleアカウントにログインしていない場合や、アカウントに閲覧の権限がない場合、データを表示できません。サーバー側の問題の可能性もあります(この画面からは区別できません)。次の手順でログインを確認してください。", showLogin: true };
+}
+
 function handleLoadError(err) {
   document.getElementById("loadingState").style.display = "none";
+  const info = classifyLoadError(err);
+  document.getElementById("errorTitle").textContent = info.title;
+  document.getElementById("errorHint").textContent = info.hint;
+  document.getElementById("errorLoginBlock").style.display = info.showLogin ? "block" : "none";
+  document.getElementById("loginBtn").style.display = info.showLogin ? "" : "none";
   document.getElementById("errorState").style.display = "block";
   console.error("データ取得エラー:", err);
 }
 
 document.getElementById("retryBtn").addEventListener("click", loadData);
+
+// 小画面での絞り込みの折りたたみ(PCでは常に表示されるため、この操作は表示に影響しない)
+document.getElementById("filtersToggle").addEventListener("click", () => {
+  const body = document.getElementById("filtersBody");
+  const open = body.classList.toggle("open");
+  document.getElementById("filtersToggleArrow").textContent = open ? "▲" : "▼";
+});
 
 // ログイン: アカウント選択画面を経由して、ARCSのアカウントで確認ページを開く
 // (複数アカウントでログイン中でも、ARCS以外のアカウントで開かれてしまうのを避けるため)
@@ -1578,6 +1864,96 @@ function renderChips() {
   }
 }
 
+// 適用中の絞り込み条件の一覧(画面の「適用中の条件」と、0件のときの説明で共通に使う)
+function getActiveFilters() {
+  const list = [];
+  if (query.trim()) list.push({ label: `キーワード: ${query.trim()}`, clear: () => { query = ""; document.getElementById("searchInput").value = ""; } });
+  if (showNewOnly) list.push({ label: "直近7日のみ", clear: () => { showNewOnly = false; document.getElementById("newOnlyToggle").classList.remove("active"); } });
+  if (sinceLastVisitOnly) list.push({ label: "前回訪問以降", clear: () => { sinceLastVisitOnly = false; } });
+  if (activeField !== "すべて") list.push({ label: `分野: ${activeField}`, clear: () => { activeField = "すべて"; } });
+  if (activeDepartment !== "すべて") list.push({ label: `部門: ${activeDepartment}`, clear: () => { activeDepartment = "すべて"; } });
+  if (activeImportance !== "すべて") list.push({ label: `重要度: ${activeImportance}`, clear: () => { activeImportance = "すべて"; } });
+  if (activeRegion !== "すべて") list.push({ label: `国: ${activeRegion}`, clear: () => { activeRegion = "すべて"; } });
+  if (activeMonth !== "すべて") list.push({ label: `月: ${activeMonth}`, clear: () => { activeMonth = "すべて"; } });
+  if (showBookmarkedOnly) list.push({ label: "ブックマークのみ", clear: () => { showBookmarkedOnly = false; document.getElementById("bookmarkOnlyToggle").classList.remove("active"); } });
+  return list;
+}
+
+function clearAllFilters() {
+  getActiveFilters().forEach(f => f.clear());
+  const panel = document.getElementById("monthSummaryPanel");
+  if (panel) panel.style.display = "none";
+  render();
+}
+
+function renderActiveFilters() {
+  const el = document.getElementById("activeFilters");
+  if (!el) return;
+  const filters = getActiveFilters();
+  if (filters.length === 0) { el.style.display = "none"; el.innerHTML = ""; return; }
+  el.style.display = "flex";
+  el.innerHTML = `<span class="active-filters-label">適用中の条件:</span>` +
+    filters.map((f, i) => `<button class="active-chip" data-filter-idx="${i}" title="この条件を解除">${escapeHtml(f.label)} <span class="x">✕</span></button>`).join("") +
+    (filters.length >= 2 ? `<button class="clear-all-btn" id="clearAllBtn">すべて解除</button>` : "");
+  el.querySelectorAll(".active-chip").forEach(btn => {
+    btn.addEventListener("click", () => { filters[parseInt(btn.dataset.filterIdx, 10)].clear(); render(); });
+  });
+  const all = document.getElementById("clearAllBtn");
+  if (all) all.addEventListener("click", clearAllFilters);
+}
+
+// 0件のとき: どの条件で除外されたか、解除方法、蓄積記事への導線を示す
+function renderEmptyState(el) {
+  const filters = getActiveFilters();
+  const total = DATA.length;
+  if (filters.length === 0) {
+    el.innerHTML = `<div class="empty-box"><div class="empty-title">記事がまだありません</div>登録されている記事がありません。</div>`;
+    return;
+  }
+  const reasons = filters.map(f => `・${escapeHtml(f.label)}`).join("<br>");
+  const onlyRecent = showNewOnly && filters.length === 1;
+  el.innerHTML = `<div class="empty-box">
+    <div class="empty-title">${onlyRecent ? "直近7日の新しい記事はまだありません" : "条件に合う記事がありません"}</div>
+    ${onlyRecent ? "データが更新されていないわけではありません。蓄積された過去の記事は、すべて表示で見られます。" : "次の条件が重なって、記事が絞り込まれています。"}
+    <div style="margin:6px 0 0;color:#55606B;font-size:12.5px;">適用中の条件:<br>${reasons}</div>
+    <div class="empty-actions">
+      ${showNewOnly ? `<button class="primary" id="emptyShowAllBtn">蓄積された全${total}件を表示する</button>` : ""}
+      <button id="emptyClearBtn">条件をすべて解除する</button>
+    </div>
+  </div>`;
+  const showAll = document.getElementById("emptyShowAllBtn");
+  if (showAll) showAll.addEventListener("click", () => { showNewOnly = false; document.getElementById("newOnlyToggle").classList.remove("active"); render(); });
+  document.getElementById("emptyClearBtn").addEventListener("click", clearAllFilters);
+}
+
+// 「前回訪問以降に追加された記事」の判定(登録日時を基準にする。公開日が古い記事も、自分にとっては新しい情報のため)
+function isAddedSince(item, sinceIso) {
+  if (!sinceIso) return false;
+  const t = new Date(item.registeredAt).getTime();
+  return !isNaN(t) && t > new Date(sinceIso).getTime();
+}
+
+function renderSinceVisitInfo() {
+  const el = document.getElementById("sinceVisitInfo");
+  if (!el) return;
+  if (!PREV_VISIT_AT) { el.innerHTML = ""; return; }
+  const n = DATA.filter(d => isAddedSince(d, PREV_VISIT_AT)).length;
+  if (sinceLastVisitOnly) {
+    el.innerHTML = `前回訪問(${escapeHtml(formatDateJst(PREV_VISIT_AT))})以降の記事を表示中`;
+    return;
+  }
+  el.innerHTML = n > 0
+    ? `前回訪問(${escapeHtml(formatDateJst(PREV_VISIT_AT))})以降に追加: ${n}件 <button id="sinceVisitBtn">この記事だけ表示</button>`
+    : `前回訪問(${escapeHtml(formatDateJst(PREV_VISIT_AT))})以降の追加はありません`;
+  const btn = document.getElementById("sinceVisitBtn");
+  if (btn) btn.addEventListener("click", () => {
+    sinceLastVisitOnly = true;
+    showNewOnly = false; // 期間の絞り込みは同時に使わない
+    document.getElementById("newOnlyToggle").classList.remove("active");
+    render();
+  });
+}
+
 function render() {
   renderChips();
   const q = query.trim().toLowerCase();
@@ -1589,11 +1965,14 @@ function render() {
     const matchesMonth = activeMonth === "すべて" || itemMonthLabel(item.date) === activeMonth;
     const matchesQuery = !q || item.title.toLowerCase().includes(q) || item.summary.toLowerCase().includes(q);
     const matchesNewOnly = !showNewOnly || isRecentItem(item);
+    const matchesSinceVisit = !sinceLastVisitOnly || isAddedSince(item, PREV_VISIT_AT);
     const matchesBookmark = !showBookmarkedOnly || !!bookmarkState[item.id];
-    return matchesField && matchesDepartment && matchesImportance && matchesRegion && matchesMonth && matchesQuery && matchesNewOnly && matchesBookmark;
+    return matchesField && matchesDepartment && matchesImportance && matchesRegion && matchesMonth && matchesQuery && matchesNewOnly && matchesSinceVisit && matchesBookmark;
   });
 
   document.getElementById("countLine").textContent = `${filtered.length}件表示中(全${DATA.length}件)`;
+  renderActiveFilters();
+  renderSinceVisitInfo();
 
   const grid = document.getElementById("cardGrid");
   const empty = document.getElementById("emptyState");
@@ -1601,6 +1980,7 @@ function render() {
   if (filtered.length === 0) {
     grid.innerHTML = "";
     empty.style.display = "block";
+    renderEmptyState(empty);
     return;
   }
   empty.style.display = "none";
@@ -1661,7 +2041,14 @@ function render() {
       </div>
       ${item.reason ? `<div class="reason-body" data-reason-body-id="${item.id}" style="display:none;">${escapeAttr(item.reason)}</div>` : ""}
       <div class="flag-reason-form" data-flag-form-id="${item.id}">
-        <textarea rows="2" data-flag-reason-input="${item.id}" placeholder="どこに違和感がありますか?(任意)例: この内容なら重要度は「中」が妥当だと思う"></textarea>
+        <div class="flag-type-row" data-flag-type-row="${item.id}">
+          <span class="flag-type-label">どこに違和感がありますか?(任意・複数可)</span>
+          <label><input type="checkbox" value="分野"> 分野</label>
+          <label><input type="checkbox" value="重要度"> 重要度</label>
+          <label><input type="checkbox" value="要約"> 要約</label>
+          <label><input type="checkbox" value="その他"> その他</label>
+        </div>
+        <textarea rows="2" data-flag-reason-input="${item.id}" placeholder="補足があれば書いてください(任意)例: この内容なら重要度は「中」が妥当だと思う"></textarea>
         <div class="flag-reason-actions">
           <button class="flag-reason-submit" data-flag-submit="${item.id}">記録する</button>
           <button data-flag-cancel="${item.id}">キャンセル</button>
@@ -1673,6 +2060,7 @@ function render() {
         <span class="source-badge">${item.source}${item.poster ? " ・ " + item.poster : ""}</span>
         <span style="font-size:11.5px;color:#9AA3AB;">${formatDisplayDate(item.date)}</span>
       </div>
+      ${relatedHtmlForNews(item)}
       <button class="bookmark-btn-full ${bookmarkState[item.id] ? "active" : ""}" data-id="${item.id}">
         🔖 ${bookmarkState[item.id] ? "ブックマーク済み" : "ブックマークする"}
       </button>
@@ -1701,6 +2089,7 @@ function render() {
   grid.querySelectorAll(".bookmark-btn-full").forEach(btn => {
     btn.addEventListener("click", () => onBookmarkClick(btn));
   });
+  bindRelatedLinks(grid);
 
   grid.querySelectorAll(".edit-toggle-btn").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -1889,12 +2278,19 @@ function onBookmarkClickAcademic(btn) {
 function flagReviewNoteHtml(id) {
   const rv = FLAG_REVIEWS[String(id)];
   if (!rv) return "";
-  const reasonHtml = rv.reason ? `<div>理由: ${escapeAttr(rv.reason)}</div>` : "";
-  if (!rv.status) {
-    return `<div class="flag-review-note">${reasonHtml}<span class="review-status pending">見直し待ち</span>(2週間に1回のレビューで確認します)</div>`;
-  }
+  const typeHtml = rv.problemType ? `<div>問題の種類: ${escapeAttr(rv.problemType)}</div>` : "";
+  const reasonHtml = rv.reason ? `<div>補足: ${escapeAttr(rv.reason)}</div>` : "";
   const commentHtml = rv.comment ? ` — ${escapeAttr(rv.comment)}` : "";
-  return `<div class="flag-review-note">${reasonHtml}<span class="review-status done">見直し済み: ${escapeAttr(rv.status)}</span>${commentHtml}</div>`;
+  // 状態: 受付済み(見直し待ち) → 確認中 → 見直し済み(修正済み/妥当(変更なし) など、結果の内容を表示)
+  let statusHtml;
+  if (!rv.status) {
+    statusHtml = `<span class="review-status pending">受付済み</span>(2週間に1回のレビューで確認します)`;
+  } else if (rv.status === "確認中") {
+    statusHtml = `<span class="review-status progress">確認中</span>${commentHtml}`;
+  } else {
+    statusHtml = `<span class="review-status done">見直し済み: ${escapeAttr(rv.status)}</span>${commentHtml}`;
+  }
+  return `<div class="flag-review-note">${typeHtml}${reasonHtml}${statusHtml}</div>`;
 }
 
 function flagButtonData(id) {
@@ -1932,15 +2328,17 @@ function onFlagClick(btn) {
 function onFlagSubmit(id) {
   const grid = document.getElementById("cardGrid");
   const reason = grid.querySelector(`[data-flag-reason-input="${id}"]`).value.trim();
+  const problemType = [...grid.querySelectorAll(`[data-flag-type-row="${id}"] input:checked`)].map(i => i.value).join("、");
   const note = grid.querySelector(`[data-flag-note="${id}"]`);
   const submit = grid.querySelector(`[data-flag-submit="${id}"]`);
   submit.disabled = true;
   note.textContent = "送信中…";
-  callApiJsonp(Object.assign({ action: "flagImportance", mode: "add", id: id, reason: reason }, flagButtonData(id)), (result) => {
+  callApiJsonp(Object.assign({ action: "flagImportance", mode: "add", id: id, reason: reason, problemType: problemType, requestId: requestIdFor("flag:" + id) }, flagButtonData(id)), (result) => {
     submit.disabled = false;
     if (result.status === "ok") {
       flagState[id] = true;
-      FLAG_REVIEWS[String(id)] = Object.assign({ status: "", comment: "" }, FLAG_REVIEWS[String(id)], { reason: reason });
+      resetRequestId("flag:" + id);
+      FLAG_REVIEWS[String(id)] = Object.assign({ status: "", comment: "" }, FLAG_REVIEWS[String(id)], { reason: reason, problemType: problemType });
       localStorage.setItem("artKbFlags", JSON.stringify(flagState));
       render();
       showToast("違和感を記録しました");
@@ -1958,6 +2356,7 @@ document.getElementById("searchInput").addEventListener("input", (e) => {
 
 document.getElementById("newOnlyToggle").addEventListener("click", () => {
   showNewOnly = !showNewOnly;
+  if (showNewOnly) sinceLastVisitOnly = false;
   const el = document.getElementById("newOnlyToggle");
   el.classList.toggle("active", showNewOnly);
   render();
@@ -1987,60 +2386,43 @@ document.getElementById("addPaperBtn").addEventListener("click", () => {
   form.style.display = form.style.display === "none" ? "flex" : "none";
 });
 
-document.getElementById("addPaperSubmitBtn").addEventListener("click", () => {
+function submitManualPaper() {
+  const noteEl = document.getElementById("paperFormNote");
   const url = document.getElementById("formPaperUrl").value.trim();
-  const note = document.getElementById("paperFormNote");
 
-  if (!url) {
-    note.textContent = "URLを入力してください";
-    return;
-  }
+  if (!url) { noteEl.textContent = "URLを入力してください"; return; }
 
   const btn = document.getElementById("addPaperSubmitBtn");
   btn.disabled = true;
-  note.textContent = "登録中...(AI判定のため数十秒かかる場合があります)";
+  noteEl.textContent = "登録中…(AI判定のため数十秒かかる場合があります)";
+  const reqKey = "paper:" + url;
 
-  const callbackName = "paperAddCallback_" + Date.now();
-  const timeoutId = setTimeout(() => {
-    if (window[callbackName]) {
-      delete window[callbackName];
-      btn.disabled = false;
-      note.textContent = "応答がありませんでした。時間をおいて再度お試しください。";
-    }
-  }, 60000);
-
-  window[callbackName] = function (result) {
-    clearTimeout(timeoutId);
-    delete window[callbackName];
+  callApiJsonp({ action: "manualAddPaper", url: url, requestId: requestIdFor(reqKey) }, (result) => {
     btn.disabled = false;
 
     if (result.status === "ok") {
-      note.textContent = `登録しました:「${result.title}」。一覧を更新しています…`;
+      resetRequestId(reqKey);
+      saveMyAdd("paper", url, result.title);
+      noteEl.textContent = "受付済み。一覧を更新しています…";
       refreshData((ok) => {
-        note.textContent = ok
-          ? `登録しました:「${result.title}」。AIの判定は完了しています(「手動追加(直近7日)」で確認できます)。`
-          : `登録しました:「${result.title}」。一覧の更新に失敗したため、画面を再読み込みしてください。`;
+        showAddResultLinks(noteEl, "paper", url, result.title);
+        noteEl.innerHTML += `<br><span style="color:#9AA3AB;">状態: ✅ 判定完了(論文はその場でAIが判定します)。` + (ok ? "" : "一覧の更新に失敗したため、画面を再読み込みしてください。") + `</span>`;
       });
       document.getElementById("formPaperUrl").value = "";
     } else if (result.status === "skipped" && result.reason === "duplicate") {
-      note.textContent = "この論文はすでに登録済みです。";
+      resetRequestId(reqKey);
+      noteEl.textContent = "この論文はすでに登録済みです。";
     } else if (result.reason === "not_found") {
-      note.textContent = "論文情報を取得できませんでした。PubMed・Europe PMC・DOIのリンクか確認してください。ニュース記事のURLの場合は「📰 ニュース一覧」タブから登録してください。";
+      resetRequestId(reqKey);
+      noteEl.textContent = "論文情報を取得できませんでした。PubMed・Europe PMC・DOIのリンクか確認してください。ニュース記事のURLの場合は「📰 ニュース一覧」タブから登録してください。";
     } else {
-      note.textContent = "登録に失敗しました(" + (result.reason || "") + ")。しばらくしてから再度お試しください。";
+      // 失敗: 同じ入力で再送しても二重登録にならないよう、リクエストIDは保持する
+      recordFailedAdd("paper", url, apiErrorMessage(result));
+      noteEl.textContent = "登録に失敗しました: " + apiErrorMessage(result) + "。入力内容は残しています。もう一度「登録する」を押してください。";
     }
-  };
-
-  const script = document.createElement("script");
-  script.src = API_URL + "?action=manualAddPaper&url=" + encodeURIComponent(url) + "&callback=" + callbackName;
-  script.onerror = () => {
-    clearTimeout(timeoutId);
-    delete window[callbackName];
-    btn.disabled = false;
-    note.textContent = "通信に失敗しました。もう一度お試しください。";
-  };
-  document.body.appendChild(script);
-});
+  }, 60000);
+}
+document.getElementById("addPaperSubmitBtn").addEventListener("click", submitManualPaper);
 
 const FIELD_ORDER = ["ART/生殖医療テクノロジー動向", "規制・政策動向", "業界動向・統計", "競合動向"];
 
@@ -2233,14 +2615,25 @@ function renderAnalysisHtml(result, uid, bodyClass) {
     legend = `<div class="analysis-legend">この分析は、出典・事実/推測の区別を付ける前に生成されたものです。</div>`;
   }
 
+  // 材料不足: 対象記事が少ない(3件未満)場合は、傾向として読まないよう警告する
+  const total = result.articleCount != null ? result.articleCount : articles.length;
+  const lowEvidence = total < 3
+    ? `<div class="analysis-warning">⚠ 対象記事が${total}件と少ないため、傾向を判断するには材料が不足しています。参考程度にご覧ください。</div>` : "";
+  // 根拠記事のない記述がある場合は、その旨を示す
+  const noSourceCount = stmts.filter(st => !(st.sources && st.sources.length)).length;
+  const noSourceNote = noSourceCount > 0
+    ? `<div class="analysis-legend">※ ${noSourceCount}件の記述に、根拠として対応付けられた記事がありません。</div>` : "";
+
   const listHtml = articles.map((a, i) =>
     `<li data-src-uid="${escapeHtml(uid)}" data-src-item="${i + 1}"><span style="color:#9AA3AB;">${i + 1}.</span> <a href="${escapeHtml(a.url)}" target="_blank" rel="noopener">${escapeHtml(a.title)}</a></li>`
   ).join("");
 
   return `${period}
+    ${lowEvidence}
     <div class="${bodyClass}">${bodyHtml}</div>
     ${legend}
-    <div class="digest-card-meta digest-card-meta-toggle" data-article-toggle="${escapeHtml(uid)}">対象記事: ${result.articleCount}件 ・ 生成日時: ${escapeHtml(result.generatedAt || "")} <span class="digest-toggle-arrow">▼</span></div>
+    ${noSourceNote}
+    <div class="digest-card-meta digest-card-meta-toggle" data-article-toggle="${escapeHtml(uid)}">対象記事: ${result.articleCount != null ? result.articleCount + "件" : (articles.length + "件")}${result.generatedAt ? " ・ 生成日時: " + escapeHtml(result.generatedAt) : ""} <span class="digest-toggle-arrow">▼</span></div>
     <ul class="digest-article-list" data-article-list="${escapeHtml(uid)}" style="display:none;">${listHtml}</ul>`;
 }
 
@@ -2373,6 +2766,7 @@ function renderAcademicTab() {
         <span class="source-badge">${(p["元URL"] || "").includes("pubmed.ncbi.nlm.nih.gov") ? "PubMed" : "Europe PMC"}</span>
         <span style="font-size:11.5px;color:#9AA3AB;">${formatDisplayDate(p["公開日"])}</span>
       </div>
+      ${relatedHtmlForPaper(p)}
       <button class="bookmark-btn-full ${bookmarkState["paper:" + p["PMID"]] ? "active" : ""}" data-id="paper:${escapeHtml(p["PMID"])}">
         🔖 ${bookmarkState["paper:" + p["PMID"]] ? "ブックマーク済み" : "ブックマークする"}
       </button>
@@ -2382,6 +2776,7 @@ function renderAcademicTab() {
   grid.querySelectorAll(".bookmark-btn-full").forEach(btn => {
     btn.addEventListener("click", () => onBookmarkClickAcademic(btn));
   });
+  bindRelatedLinks(grid);
 }
 
 document.getElementById("academicSearchInput").addEventListener("input", (e) => {
@@ -2487,8 +2882,10 @@ function onDigestMemoSubmit(btn) {
   const originalLabel = btn.textContent;
   btn.textContent = "送信中…";
 
-  callApiJsonp({ action: "addFieldMemo", field: field, author: author, content: content }, (result) => {
+  const memoKey = "memo:" + field + ":" + content;
+  callApiJsonp({ action: "addFieldMemo", field: field, author: author, content: content, requestId: requestIdFor(memoKey) }, (result) => {
     if (result.status === "ok") {
+      resetRequestId(memoKey);
       if (!FIELD_MEMOS[field]) FIELD_MEMOS[field] = [];
       FIELD_MEMOS[field].push({ author, content, date: "たった今" });
       renderDigestTab();
@@ -2520,9 +2917,11 @@ document.getElementById("opinionSubmitBtn").addEventListener("click", () => {
   submitBtn.disabled = true;
   noteEl.textContent = "送信中…";
 
-  callApiJsonp({ action: "generalFeedback", content: content, author: author }, (result) => {
+  const opinionKey = "opinion:" + content;
+  callApiJsonp({ action: "generalFeedback", content: content, author: author, requestId: requestIdFor(opinionKey) }, (result) => {
     submitBtn.disabled = false;
     if (result.status === "ok") {
+      resetRequestId(opinionKey);
       noteEl.textContent = "送信しました。ありがとうございます。";
       document.getElementById("opinionContent").value = "";
     } else {
@@ -2594,70 +2993,107 @@ function renderReportPanel() {
   });
 }
 
-document.getElementById("addNewsSubmitBtn").addEventListener("click", () => {
+// ---- 手動追加の追跡(このブラウザで追加したもの・登録に失敗したものを記録) ----
+// 状態の定義: 受付済み(登録直後) → 判定待ち(ニュースは翌朝AIが判定) → 完了 / 要確認(判定待ちが2日以上続いている) / 失敗(登録できなかった)
+let myAdds = [];
+try { myAdds = JSON.parse(localStorage.getItem("artKbMyAdds") || "[]"); } catch (e) { myAdds = []; }
+const failedAdds = []; // この画面の間だけ保持する登録失敗の記録(再試行用)
+
+function saveMyAdd(kind, url, title) {
+  myAdds.unshift({ kind, url, title: title || "", at: new Date().toISOString() });
+  myAdds = myAdds.slice(0, 50);
+  try { localStorage.setItem("artKbMyAdds", JSON.stringify(myAdds)); } catch (e) { /* 保存できなくても追加自体は成功 */ }
+}
+function isMyAdd(kind, url) { return myAdds.some(a => a.kind === kind && a.url === url); }
+
+// 二重登録を防ぐため、同じ入力の再送には同じリクエストIDを使う(成功したら新しいIDに切り替える)
+const pendingRequestIds = {};
+function requestIdFor(key) {
+  if (!pendingRequestIds[key]) pendingRequestIds[key] = "r_" + Date.now() + "_" + Math.floor(Math.random() * 1e9);
+  return pendingRequestIds[key];
+}
+function resetRequestId(key) { delete pendingRequestIds[key]; }
+
+// 登録完了後の案内: 公開日が不明でも、記事を開く/一覧で表示できる導線を出す
+function showAddResultLinks(noteEl, kind, url, title) {
+  noteEl.innerHTML = `登録しました:「${escapeHtml(title || url)}」 `
+    + `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" style="color:var(--blue);">元の記事を開く</a> ・ `
+    + `<a href="#" class="show-in-list-link" style="color:var(--blue);">一覧で表示する</a>`;
+  noteEl.querySelector(".show-in-list-link").addEventListener("click", (e) => {
+    e.preventDefault();
+    showAddedInList(kind, title || url);
+  });
+}
+
+// 追加した記事を一覧で見つけられるよう、期間の絞り込みを外して、タイトルで検索した状態にする
+function showAddedInList(kind, keyword) {
+  if (kind === "paper") {
+    switchMainTab("tabAcademic");
+    academicQuery = keyword;
+    document.getElementById("academicSearchInput").value = keyword;
+    renderAcademicTab();
+    return;
+  }
+  switchMainTab("tabNews");
+  showNewOnly = false;
+  sinceLastVisitOnly = false;
+  document.getElementById("newOnlyToggle").classList.remove("active");
+  query = keyword;
+  document.getElementById("searchInput").value = keyword;
+  render();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function submitManualNews() {
+  const noteEl = document.getElementById("formNote");
   const url = document.getElementById("formUrl").value.trim();
   const fallbackTitle = document.getElementById("formFallbackTitle").value.trim();
 
-  if (!url) {
-    document.getElementById("formNote").textContent = "URLを入力してください";
-    return;
-  }
+  if (!url) { noteEl.textContent = "URLを入力してください"; return; }
   // 論文のURLは「学術研究」タブで扱う(ニュース一覧に混ざらないようにする)
   if (/pubmed\.ncbi\.nlm\.nih\.gov|europepmc\.org|doi\.org\//.test(url)) {
-    document.getElementById("formNote").textContent = "これは論文のURLのようです。論文は「🔬 学術研究」タブの「手動で論文を追加」から登録してください。";
+    noteEl.textContent = "これは論文のURLのようです。論文は「🔬 学術研究」タブの「手動で論文を追加」から登録してください。";
     return;
   }
 
   const submitBtn = document.getElementById("addNewsSubmitBtn");
   submitBtn.disabled = true;
-  document.getElementById("formNote").textContent = "登録中...";
+  noteEl.textContent = "登録中…";
+  const reqKey = "news:" + url;
 
-  const callbackName = "artKbAddCallback_" + Date.now();
-  const timeoutId = setTimeout(() => {
-    if (window[callbackName]) {
-      delete window[callbackName];
-      submitBtn.disabled = false;
-      document.getElementById("formNote").textContent = "応答がありませんでした。時間をおいて再度お試しください。";
-    }
-  }, 20000);
-
-  window[callbackName] = function (result) {
-    clearTimeout(timeoutId);
-    delete window[callbackName];
+  callApiJsonp({ action: "manualAdd", url: url, fallbackTitle: fallbackTitle, requestId: requestIdFor(reqKey) }, (result) => {
     submitBtn.disabled = false;
 
     if (result.status === "ok") {
-      document.getElementById("formNote").textContent = "登録しました。一覧を更新しています…";
+      resetRequestId(reqKey);
+      saveMyAdd("news", url, result.title || fallbackTitle);
+      noteEl.textContent = "受付済み。一覧を更新しています…";
       refreshData((ok) => {
-        document.getElementById("formNote").textContent = ok
-          ? "登録しました。「手動追加(直近7日)」を開くと、判定の状況(「判定待ち」は翌朝AIが判定します)を確認できます。"
-          : "登録しました。一覧の更新に失敗したため、画面を再読み込みしてください。";
+        showAddResultLinks(noteEl, "news", url, result.title || fallbackTitle);
+        noteEl.innerHTML += `<br><span style="color:#9AA3AB;">状態: ⏳ 判定待ち(翌朝までにAIが分野・重要度・国を判定します)。` + (ok ? "" : "一覧の更新に失敗したため、画面を再読み込みしてください。") + `</span>`;
       });
       document.getElementById("formUrl").value = "";
       document.getElementById("formFallbackTitle").value = "";
       document.getElementById("formFallbackRow").style.display = "none";
     } else if (result.status === "skipped" && result.reason === "duplicate_url") {
-      document.getElementById("formNote").textContent = "このURLはすでに登録済みです。";
+      resetRequestId(reqKey);
+      noteEl.textContent = "このURLはすでに登録済みです。";
     } else if (result.reason === "title_not_found") {
       document.getElementById("formFallbackRow").style.display = "flex";
-      document.getElementById("formNote").textContent = "ページからタイトルを自動取得できませんでした。上の欄にタイトルを入力して、もう一度「登録する」を押してください。";
+      noteEl.textContent = "ページからタイトルを自動取得できませんでした。上の欄にタイトルを入力して、もう一度「登録する」を押してください。";
     } else {
-      document.getElementById("formNote").textContent = "登録に失敗しました。URLが正しいか確認してください。";
+      // 失敗: 同じ入力で再送しても二重登録にならないよう、リクエストIDは保持する
+      recordFailedAdd("news", url, apiErrorMessage(result));
+      noteEl.textContent = "登録に失敗しました: " + apiErrorMessage(result) + "。入力内容は残しています。もう一度「登録する」を押してください。";
     }
-  };
+  }, 40000);
+}
+document.getElementById("addNewsSubmitBtn").addEventListener("click", submitManualNews);
 
-  const script = document.createElement("script");
-  script.src = API_URL + "?action=manualAdd&url=" + encodeURIComponent(url)
-    + "&fallbackTitle=" + encodeURIComponent(fallbackTitle)
-    + "&callback=" + callbackName;
-  script.onerror = () => {
-    clearTimeout(timeoutId);
-    delete window[callbackName];
-    submitBtn.disabled = false;
-    document.getElementById("formNote").textContent = "通信に失敗しました。もう一度お試しください。";
-  };
-  document.body.appendChild(script);
-});
+function recordFailedAdd(kind, url, reason) {
+  if (!failedAdds.some(f => f.kind === kind && f.url === url)) failedAdds.unshift({ kind, url, reason, at: new Date().toISOString() });
+  renderManualAddStatus();
+}
 
 loadData();
 </script>
