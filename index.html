@@ -677,20 +677,30 @@
     padding: 8px 12px;
     margin-bottom: 10px;
   }
+  .error-title { font-size: 15px; font-weight: 600; }
+  .error-box {
+    max-width: 620px;
+    margin: 14px auto 0;
+    text-align: left;
+  }
   .error-hint {
-    display: inline-block;
-    margin-top: 8px;
+    margin: 0;
     font-size: 12.5px;
     color: #55606B;
-    line-height: 1.7;
-  }
-  .error-steps {
-    text-align: left;
-    display: inline-block;
-    margin: 10px 0 4px;
-    padding-left: 20px;
-    font-size: 12.5px;
     line-height: 1.8;
+  }
+  .error-note {
+    margin: 16px 0 0;
+    font-size: 11.5px;
+    color: #8A95A0;
+    line-height: 1.8;
+  }
+  .error-actions { text-align: center; margin-top: 4px; }
+  .error-steps {
+    margin: 8px 0 4px;
+    padding-left: 22px;
+    font-size: 12.5px;
+    line-height: 1.9;
     color: #55606B;
   }
   .toast {
@@ -1083,18 +1093,22 @@
 <div class="empty-state" id="emptyState" style="display:none;">該当する記事がありません。検索条件を変えてみてください。</div>
 <div class="loading-state" id="loadingState">データを読み込んでいます...</div>
 <div class="error-state" id="errorState" style="display:none;">
-  データの取得に失敗しました。<br>
-  <span class="error-hint">ARCS Inc.のGoogleアカウントにログインしていない場合、データを表示できません。</span>
-  <ol class="error-steps">
-    <li>「ARCSアカウントでログイン」を押します(新しいタブが開きます)</li>
-    <li>ARCS Inc.のGoogleアカウントを選んでログインし、「ログインを確認できました」と表示されたら、そのタブを閉じます</li>
-    <li>このタブに戻ると、自動で再読み込みします(されない場合は「再読み込み」を押します)</li>
-  </ol>
-  <button class="retry-btn" id="loginBtn">ARCSアカウントでログイン</button>
-  <button class="retry-btn" id="retryBtn">再読み込み</button>
-  <div class="error-hint" style="margin-top:12px;">
-    ※ 複数のGoogleアカウントにログインしている場合は、必ずARCS Inc.のアカウントを選んでください。<br>
-    「ページが見つかりません」と表示された場合は、別のアカウントで開かれています。画面右上のアカウントアイコンからARCSのアカウントに切り替えるか、シークレットウィンドウでナレッジベースを開き直してください。
+  <div class="error-title">データの取得に失敗しました。</div>
+  <div class="error-box">
+    <p class="error-hint">ARCS Inc.のGoogleアカウントにログインしていない場合、データを表示できません。次の手順でログインしてください。</p>
+    <ol class="error-steps">
+      <li>「ARCSアカウントでログイン」を押します(新しいタブが開きます)</li>
+      <li>ARCS Inc.のGoogleアカウントを選んでログインし、「ログインを確認できました」と表示されたら、そのタブを閉じます</li>
+      <li>このタブに戻ると、自動で再読み込みします(されない場合は「再読み込み」を押します)</li>
+    </ol>
+    <div class="error-actions">
+      <button class="retry-btn" id="loginBtn">ARCSアカウントでログイン</button>
+      <button class="retry-btn" id="retryBtn">再読み込み</button>
+    </div>
+    <p class="error-note">
+      ※ 複数のGoogleアカウントにログインしている場合は、必ずARCS Inc.のアカウントを選んでください。<br>
+      「ページが見つかりません」と表示された場合は、別のアカウントで開かれています。画面右上のアカウントアイコンからARCSのアカウントに切り替えるか、シークレットウィンドウでナレッジベースを開き直してください。
+    </p>
   </div>
 </div>
 <div class="toast" id="toast"></div>
