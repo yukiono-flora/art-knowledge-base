@@ -945,8 +945,7 @@
 <div class="error-state" id="errorState" style="display:none;">
   データの取得に失敗しました。<br>
   <span class="error-hint">ARCS Inc.のGoogleアカウントにログインしていない場合、データを表示できません。<br>
-  「ログインを確認する」を押して開いたタブでログインし、そのタブを閉じてから「再読み込み」を押してください。</span><br>
-  <button class="retry-btn" id="loginBtn">ログインを確認する</button>
+  ログインしてから、「再読み込み」を押してください。</span><br>
   <button class="retry-btn" id="retryBtn">再読み込み</button>
 </div>
 <div class="toast" id="toast"></div>
@@ -1171,10 +1170,6 @@ function handleLoadError(err) {
 }
 
 document.getElementById("retryBtn").addEventListener("click", loadData);
-document.getElementById("loginBtn").addEventListener("click", () => {
-  // ログイン済みなら確認メッセージ、未ログインならGoogleのログイン画面が開く
-  window.open(API_URL + "?action=ping", "_blank");
-});
 
 // ---- 共通: メッセージ表示(保存の成功/失敗などを画面に出す) ----
 let toastTimer = null;
