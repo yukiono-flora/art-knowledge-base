@@ -455,6 +455,8 @@
   .flag-review-note .review-status.pending { color: #B9660B; }
   .flag-review-note .review-status.done { color: #1D8348; }
   .flag-review-note .review-status.progress { color: #1F6FB2; }
+  .flag-review-note .review-status.hold { color: #7A5AA8; }
+  .flag-review-note .review-status.unknown { color: #B23A3A; }
   .flag-type-row { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; font-size: 12px; color: #55606B; }
   .flag-type-label { width: 100%; font-weight: 600; }
   .flag-type-row label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
@@ -959,6 +961,7 @@
     display: inline-block;
     margin-bottom: 8px;
   }
+  .analysis-unverified { background: #FDE8E6; border-color: #EBB9B3; color: #8A2A22; }
   .analysis-warning {
     font-size: 12px;
     color: #8A4B00;
@@ -1505,6 +1508,7 @@ function applyServerData(json) {
     poster: item["投稿者"],
     date: item["公開日"],
     registeredAt: item["登録日時"],
+    process: item["判定試行"] || null,   // 手動追加のAI判定の試行状況(試行回数・失敗回数・最終試行日時・最終結果)
     region: normalizeRegion(item["国"]),
     departments: (item["部門"] || "").split(",").map(d => d.trim()).filter(Boolean),
     reason: item["判定理由"] || "",
@@ -1563,9 +1567,15 @@ function renderManualAddStatus() {
     .map(d => {
       const pending = d.status === "判定待ち";
       const stale = pending && hoursSince(d.registeredAt) >= 48;
+      const pr = d.process;
+      // 判定に失敗した記録がある(最後の試行が失敗)か、2日以上判定待ちが続くものは「要確認」
+      const failedLast = pending && pr && pr.lastResult === "失敗";
+      let detail = "";
+      if (pending && pr) detail = `AI判定の試行 ${pr.attempts}回(うち失敗 ${pr.failures}回)・最終試行: ${formatDateJst(pr.lastAt)}・最後の結果: ${pr.lastResult}`;
+      else if (stale) detail = "AI判定の試行の記録がありません(翌朝の自動処理がまだ動いていない可能性があります)";
       return {
-        state: stale ? "stale" : (pending ? "pending" : "done"),
-        url: d.url, title: d.title, at: d.registeredAt, mine: isMyAdd("news", d.url), kind: "news"
+        state: (stale || failedLast) ? "stale" : (pending ? "pending" : "done"),
+        url: d.url, title: d.title, at: d.registeredAt, mine: isMyAdd("news", d.url), kind: "news", detail: detail
       };
     });
   const paperItems = (PAPERS || [])
@@ -1579,7 +1589,7 @@ function renderManualAddStatus() {
   const failedPapers = failedAdds.filter(f => f.kind === "paper").map(f => ({ state: "failed", url: f.url, title: f.url, at: f.at, mine: true, kind: "paper", reason: f.reason }));
 
   renderManualStatusBlock("manualAddStatusNews", "news", failedNews.concat(newsItems),
-    "「判定待ち」の記事は、翌朝の自動収集のタイミングでAIが分野・重要度・国を判定します。「要確認」は、判定が2日以上完了していません(管理者へ連絡してください)。");
+    "「判定待ち」の記事は、翌朝の自動収集のタイミングでAIが分野・重要度・国を判定します。失敗した場合は、次の自動収集で再び試行します(手動で再処理する場合は、管理者がApps Scriptで processPendingManualAdds を実行します)。「要確認」は、判定が2日以上完了していない、または最後の試行が失敗している状態です(管理者へ連絡してください)。");
   renderManualStatusBlock("manualAddStatusPaper", "paper", failedPapers.concat(paperItems), "");
 }
 
@@ -1604,7 +1614,9 @@ function renderManualStatusBlock(elId, key, items, note) {
 
   const listHtml = items.map((i, idx) => {
     const b = STATE_BADGE[i.state];
-    const detail = i.state === "failed" ? `<div class="edit-note error" style="flex:1 1 100%;">${escapeHtml(i.reason || "")}(入力欄に同じURLを入れて、もう一度登録してください)</div>` : "";
+    const detail = i.state === "failed"
+      ? `<div class="edit-note error" style="flex:1 1 100%;">${escapeHtml(i.reason || "")}(入力欄に同じURLを入れて、もう一度登録してください)</div>`
+      : (i.detail ? `<div class="edit-note ${i.state === "stale" ? "error" : ""}" style="flex:1 1 100%;">${escapeHtml(i.detail)}</div>` : "");
     return `<div class="manual-add-status-item">
       <span class="add-status-badge ${b.cls}">${b.label}</span>
       ${i.mine ? `<span class="add-status-badge mine">あなたが追加</span>` : ""}
@@ -1623,7 +1635,7 @@ function renderManualStatusBlock(elId, key, items, note) {
   el.style.display = "block";
   el.innerHTML = `
     <div class="manual-add-status-summary" data-status-toggle="${key}">
-      手動追加(直近7日) ${items.length}件${summaryParts.length ? "(" + summaryParts.join("・") + ")" : ""} ${isOpen ? "▲" : "▼"}
+      手動追加(直近7日と未完了) ${items.length}件${summaryParts.length ? "(" + summaryParts.join("・") + ")" : ""} ${isOpen ? "▲" : "▼"}
     </div>
     <div class="manual-add-status-list ${isOpen ? "open" : ""}">
       ${listHtml}
@@ -2281,14 +2293,21 @@ function flagReviewNoteHtml(id) {
   const typeHtml = rv.problemType ? `<div>問題の種類: ${escapeAttr(rv.problemType)}</div>` : "";
   const reasonHtml = rv.reason ? `<div>補足: ${escapeAttr(rv.reason)}</div>` : "";
   const commentHtml = rv.comment ? ` — ${escapeAttr(rv.comment)}` : "";
-  // 状態: 受付済み(見直し待ち) → 確認中 → 見直し済み(修正済み/妥当(変更なし) など、結果の内容を表示)
+  // 状態は、受付済み / 確認中 / 保留 / 見直し済み の4つ。定義にない値は「不明」とし、完了とは扱わない
   let statusHtml;
-  if (!rv.status) {
-    statusHtml = `<span class="review-status pending">受付済み</span>(2週間に1回のレビューで確認します)`;
-  } else if (rv.status === "確認中") {
-    statusHtml = `<span class="review-status progress">確認中</span>${commentHtml}`;
-  } else {
-    statusHtml = `<span class="review-status done">見直し済み: ${escapeAttr(rv.status)}</span>${commentHtml}`;
+  switch (rv.status) {
+    case "確認中":
+      statusHtml = `<span class="review-status progress">確認中</span>${commentHtml}`; break;
+    case "保留":
+      statusHtml = `<span class="review-status hold">保留</span>${commentHtml}`; break;
+    case "見直し済み": {
+      const result = rv.result ? `(結果: ${escapeAttr(rv.result)})` : "";
+      statusHtml = `<span class="review-status done">見直し済み${result}</span>${commentHtml}`; break;
+    }
+    case "不明":
+      statusHtml = `<span class="review-status unknown">⚠ 状態を確認できません</span>(シートの見直し状況に、定義にない値「${escapeAttr(rv.statusRaw || "")}」が入っています。管理者に連絡してください)`; break;
+    default: // 受付済み(空欄を含む)
+      statusHtml = `<span class="review-status pending">受付済み</span>(2週間に1回のレビューで確認します)`;
   }
   return `<div class="flag-review-note">${typeHtml}${reasonHtml}${statusHtml}</div>`;
 }
@@ -2612,11 +2631,16 @@ function renderAnalysisHtml(result, uid, bodyClass) {
     legend = `<div class="analysis-legend">[ ]の番号は、下の「対象記事」の番号に対応します。〔推測〕は、記事に直接書かれていない解釈・見通しです。</div>`;
   } else {
     bodyHtml = escapeHtml(result.content);
-    legend = `<div class="analysis-legend">この分析は、出典・事実/推測の区別を付ける前に生成されたものです。</div>`;
+    legend = result.mode === "fallback"
+      ? ""  // 根拠未確認の警告を上に出しているため、重ねて注記しない
+      : `<div class="analysis-legend">この分析は、出典・事実/推測の区別を付ける前に生成されたものです。</div>`;
   }
 
   // 材料不足: 対象記事が少ない(3件未満)場合は、傾向として読まないよう警告する
   const total = result.articleCount != null ? result.articleCount : articles.length;
+  // 根拠未確認: 出典・事実/推測の区別を付けられなかった出力(生成方式=fallback)。通常の分析と区別して警告する
+  const fallbackWarn = result.mode === "fallback"
+    ? `<div class="analysis-warning analysis-unverified">⚠ <b>根拠未確認</b>: 出典付きで生成できなかったため、この分析には出典・事実/推測の区別がありません。内容は確認が必要です(次回の自動生成で作り直されます)。</div>` : "";
   const lowEvidence = total < 3
     ? `<div class="analysis-warning">⚠ 対象記事が${total}件と少ないため、傾向を判断するには材料が不足しています。参考程度にご覧ください。</div>` : "";
   // 根拠記事のない記述がある場合は、その旨を示す
@@ -2629,6 +2653,7 @@ function renderAnalysisHtml(result, uid, bodyClass) {
   ).join("");
 
   return `${period}
+    ${fallbackWarn}
     ${lowEvidence}
     <div class="${bodyClass}">${bodyHtml}</div>
     ${legend}
@@ -3007,12 +3032,26 @@ function saveMyAdd(kind, url, title) {
 function isMyAdd(kind, url) { return myAdds.some(a => a.kind === kind && a.url === url); }
 
 // 二重登録を防ぐため、同じ入力の再送には同じリクエストIDを使う(成功したら新しいIDに切り替える)
-const pendingRequestIds = {};
-function requestIdFor(key) {
-  if (!pendingRequestIds[key]) pendingRequestIds[key] = "r_" + Date.now() + "_" + Math.floor(Math.random() * 1e9);
-  return pendingRequestIds[key];
+// 失敗した送信を、画面を再読み込みした後に再送しても、二重登録にならないよう、識別番号を保存する。
+// 保存期間は6時間(サーバー側の保持期間と同じ。これを超えた再送は、重複を防げない)。成功したら削除する。
+const REQUEST_ID_TTL_MS = 6 * 3600 * 1000;
+let pendingRequestIds = {};
+try {
+  const saved = JSON.parse(localStorage.getItem("artKbPendingRequestIds") || "{}");
+  Object.keys(saved).forEach(k => { if (Date.now() - saved[k].at < REQUEST_ID_TTL_MS) pendingRequestIds[k] = saved[k]; });
+} catch (e) { pendingRequestIds = {}; }
+function persistRequestIds() {
+  try { localStorage.setItem("artKbPendingRequestIds", JSON.stringify(pendingRequestIds)); } catch (e) { /* 保存できなくても、この画面の間は重複を防げる */ }
 }
-function resetRequestId(key) { delete pendingRequestIds[key]; }
+function requestIdFor(key) {
+  const cur = pendingRequestIds[key];
+  if (!cur || Date.now() - cur.at >= REQUEST_ID_TTL_MS) {
+    pendingRequestIds[key] = { id: "r_" + Date.now() + "_" + Math.floor(Math.random() * 1e9), at: Date.now() };
+    persistRequestIds();
+  }
+  return pendingRequestIds[key].id;
+}
+function resetRequestId(key) { delete pendingRequestIds[key]; persistRequestIds(); }
 
 // 登録完了後の案内: 公開日が不明でも、記事を開く/一覧で表示できる導線を出す
 function showAddResultLinks(noteEl, kind, url, title) {
